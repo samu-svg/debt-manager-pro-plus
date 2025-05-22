@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -10,6 +10,7 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Cliente, Divida } from '@/types';
 import { formatarMoeda, formatarData } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { MessageCircle, Loader2 } from 'lucide-react';
 
 // Schema de validação para o formulário
 const whatsAppSchema = z.object({
@@ -30,7 +31,20 @@ interface WhatsAppFormProps {
 
 const WhatsAppForm = ({ cliente, divida, onEnviar, onCancel }: WhatsAppFormProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [apiConfigured, setApiConfigured] = useState(false);
   const { toast } = useToast();
+
+  useEffect(() => {
+    // Check if WhatsApp API is properly configured
+    const apiUrl = import.meta.env.VITE_WHATSAPP_API_URL;
+    const apiKey = import.meta.env.VITE_WHATSAPP_API_KEY;
+    
+    setApiConfigured(
+      !!apiUrl && 
+      !!apiKey && 
+      apiUrl !== 'https://api.whatsapp.com/send'
+    );
+  }, []);
 
   // Formatação do telefone
   const formatarTelefone = (value: string) => {
@@ -56,14 +70,18 @@ const WhatsAppForm = ({ cliente, divida, onEnviar, onCancel }: WhatsAppFormProps
   const handleSubmit = async (data: WhatsAppFormValues) => {
     setIsSubmitting(true);
     try {
-      // Simulação de envio (em um app real, isso iria para a API do WhatsApp Business)
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
       onEnviar(data.numeroWhatsApp, data.mensagem);
-      toast({
-        title: "Mensagem enviada",
-        description: "A mensagem de cobrança foi enviada com sucesso",
-      });
+      if (apiConfigured) {
+        toast({
+          title: "Mensagem enviada via Evolution API",
+          description: "A mensagem de cobrança foi enviada com sucesso",
+        });
+      } else {
+        toast({
+          title: "Mensagem simulada",
+          description: "A Evolution API não está configurada. A mensagem foi apenas simulada.",
+        });
+      }
     } catch (error) {
       toast({
         title: "Erro ao enviar mensagem",
@@ -78,6 +96,15 @@ const WhatsAppForm = ({ cliente, divida, onEnviar, onCancel }: WhatsAppFormProps
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+        {!apiConfigured && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 mb-4">
+            <p className="text-sm text-yellow-800 flex items-center">
+              <MessageCircle className="h-4 w-4 mr-2" />
+              Modo de simulação ativo. Configure a Evolution API para envios reais.
+            </p>
+          </div>
+        )}
+
         <FormField
           control={form.control}
           name="numeroWhatsApp"
@@ -138,8 +165,19 @@ const WhatsAppForm = ({ cliente, divida, onEnviar, onCancel }: WhatsAppFormProps
           <Button 
             type="submit"
             disabled={isSubmitting}
+            className="bg-green-600 hover:bg-green-700"
           >
-            Enviar Mensagem
+            {isSubmitting ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Enviando...
+              </>
+            ) : (
+              <>
+                <MessageCircle className="h-4 w-4 mr-2" />
+                Enviar Mensagem
+              </>
+            )}
           </Button>
         </div>
       </form>

@@ -1,4 +1,3 @@
-
 version: '3.8'
 services:
   postgres:
@@ -34,9 +33,28 @@ services:
     networks:
       - devedores-network
 
+  evolution-api:
+    image: atendai/evolution-api:latest
+    container_name: evolution-api
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      - CONFIG_SESSION_PHONE_CLIENT=SistemaDevedores
+      - AUTHENTICATION_TYPE=apikey
+      - AUTHENTICATION_API_KEY=sua_chave_aqui_123
+      - SERVER_URL=http://localhost:8080
+    volumes:
+      - evolution_instances:/evolution/instances
+      - evolution_store:/evolution/store
+    networks:
+      - devedores-network
+
 volumes:
   postgres_data:
   pgadmin_data:
+  evolution_instances:
+  evolution_store:
 
 networks:
   devedores-network:

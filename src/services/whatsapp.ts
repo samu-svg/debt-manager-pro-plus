@@ -1,15 +1,15 @@
-
 import { Cliente, Divida } from '@/types';
 import { Comunicacao, StatusMensagem, construirMensagem } from '@/types/whatsapp';
 import { calcularDividaCorrigida, calcularMesesAtraso } from '@/lib/utils';
 
 // WhatsApp API config
-const API_URL = import.meta.env.VITE_WHATSAPP_API_URL || 'https://api.whatsapp.com/send';
-const TOKEN = import.meta.env.VITE_WHATSAPP_TOKEN;
+const API_URL = import.meta.env.VITE_WHATSAPP_API_URL || 'http://localhost:8080';
+const API_KEY = import.meta.env.VITE_WHATSAPP_API_KEY || 'sua_chave_aqui_123';
+const INSTANCE_NAME = import.meta.env.VITE_WHATSAPP_INSTANCE_NAME || 'SistemaDevedores';
 const PHONE_NUMBER = import.meta.env.VITE_WHATSAPP_PHONE_NUMBER;
 
 /**
- * Service for WhatsApp communication
+ * Service for WhatsApp communication using Evolution API
  */
 export const whatsAppService = {
   /**
@@ -32,8 +32,8 @@ export const whatsAppService = {
       // Format phone number (remove special chars)
       const numeroFormatado = numeroTelefone.replace(/\D/g, '');
       
-      // If we're in development/test mode, log instead of actually sending
-      if (!TOKEN || process.env.NODE_ENV === 'development') {
+      // Check if we're in development/test mode or the API key isn't configured
+      if (!API_KEY || process.env.NODE_ENV === 'development' || API_URL.includes('api.whatsapp.com')) {
         console.log('SIMULAÇÃO DE ENVIO DE WHATSAPP:', { 
           para: numeroFormatado,
           mensagem,
@@ -59,23 +59,19 @@ export const whatsAppService = {
         };
       }
       
-      // Prepare API request to external WhatsApp API
-      // This is a simplified example - actual API calls depend on the provider
-      const url = `${API_URL}?phone=${numeroFormatado}&text=${encodeURIComponent(mensagem)}`;
+      // Prepare API request to Evolution WhatsApp API
+      const url = `${API_URL}/message/sendText/${INSTANCE_NAME}`;
       
-      // Make API call to WhatsApp service
+      // Make API call to Evolution WhatsApp API
       const response = await fetch(url, {
         method: 'POST',
-        headers: TOKEN ? {
-          'Authorization': `Bearer ${TOKEN}`,
-          'Content-Type': 'application/json'
-        } : {
+        headers: {
+          'apikey': API_KEY,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          to: numeroFormatado,
-          message: mensagem,
-          from: PHONE_NUMBER
+          number: numeroFormatado,
+          text: mensagem
         })
       });
       
