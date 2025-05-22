@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -48,11 +49,11 @@ const ConfiguracoesMensagemModal = ({ isOpen, onClose, onSave, configuracaoInici
   // Inicializar formulário com valores padrão ou configurações atuais
   const form = useForm<ConfiguracaoMensagemValues>({
     resolver: zodResolver(configuracaoSchema),
-    defaultValues: configuracaoInicial || {
-      templateMensagem: templatePadrao,
-      horarioEnvio: "09:00",
-      limiteDiario: 50,
-      diasSemana: [1, 2, 3, 4, 5, 6], // Segunda a Sábado por padrão
+    defaultValues: {
+      templateMensagem: configuracaoInicial?.templateMensagem || templatePadrao,
+      horarioEnvio: configuracaoInicial?.horarioEnvio || "09:00",
+      limiteDiario: configuracaoInicial?.limiteDiario || 50,
+      diasSemana: configuracaoInicial?.diasSemana || [1, 2, 3, 4, 5, 6], // Segunda a Sábado por padrão
     }
   });
 
@@ -78,7 +79,15 @@ const ConfiguracoesMensagemModal = ({ isOpen, onClose, onSave, configuracaoInici
   const handleSubmit = async (data: ConfiguracaoMensagemValues) => {
     setIsSubmitting(true);
     try {
-      onSave(data);
+      // Garantir que todos os campos obrigatórios estejam presentes
+      const configCompleta: ConfiguracaoMensagem = {
+        templateMensagem: data.templateMensagem,
+        horarioEnvio: data.horarioEnvio,
+        limiteDiario: data.limiteDiario,
+        diasSemana: data.diasSemana
+      };
+      
+      onSave(configCompleta);
       toast({
         title: "Configurações salvas",
         description: "As configurações de mensagem foram atualizadas com sucesso",
