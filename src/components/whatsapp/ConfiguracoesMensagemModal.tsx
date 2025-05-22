@@ -1,6 +1,5 @@
 
 import { useState } from 'react';
-import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
@@ -8,19 +7,11 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { ConfiguracaoMensagem } from '@/types/whatsapp';
-
-// Schema para validação do formulário
-const configuracaoSchema = z.object({
-  templateMensagem: z.string().min(10, { message: 'A mensagem deve ter pelo menos 10 caracteres' }),
-  horarioEnvio: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, { message: 'Formato de hora inválido' }),
-  limiteDiario: z.number().int().min(1, { message: 'O limite deve ser pelo menos 1' }).max(100, { message: 'O limite não pode exceder 100' }),
-  diasSemana: z.array(z.number()).min(1, { message: 'Selecione pelo menos um dia da semana' }),
-});
-
-type ConfiguracaoMensagemValues = z.infer<typeof configuracaoSchema>;
+import MensagemVariaveisButtons from './MensagemVariaveisButtons';
+import DiasSemanaSelect from './DiasSemanaSelect';
+import { TEMPLATE_PADRAO, configuracaoSchema, ConfiguracaoMensagemValues } from './configuracaoMensagemConstants';
 
 interface ConfiguracoesMensagemModalProps {
   isOpen: boolean;
@@ -29,28 +20,15 @@ interface ConfiguracoesMensagemModalProps {
   configuracaoInicial?: ConfiguracaoMensagem;
 }
 
-const diasSemanaOpcoes = [
-  { id: 1, label: 'Segunda-feira' },
-  { id: 2, label: 'Terça-feira' },
-  { id: 3, label: 'Quarta-feira' },
-  { id: 4, label: 'Quinta-feira' },
-  { id: 5, label: 'Sexta-feira' },
-  { id: 6, label: 'Sábado' },
-  { id: 0, label: 'Domingo' },
-];
-
 const ConfiguracoesMensagemModal = ({ isOpen, onClose, onSave, configuracaoInicial }: ConfiguracoesMensagemModalProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
-
-  // Template padrão da mensagem
-  const templatePadrao = "Olá {NOME}, sua dívida de R$ {VALOR_ORIGINAL} venceu há {MESES_ATRASO} meses. Valor atualizado: R$ {VALOR_CORRIGIDO}. Entre em contato para quitação.";
 
   // Inicializar formulário com valores padrão ou configurações atuais
   const form = useForm<ConfiguracaoMensagemValues>({
     resolver: zodResolver(configuracaoSchema),
     defaultValues: {
-      templateMensagem: configuracaoInicial?.templateMensagem || templatePadrao,
+      templateMensagem: configuracaoInicial?.templateMensagem || TEMPLATE_PADRAO,
       horarioEnvio: configuracaoInicial?.horarioEnvio || "09:00",
       limiteDiario: configuracaoInicial?.limiteDiario || 50,
       diasSemana: configuracaoInicial?.diasSemana || [1, 2, 3, 4, 5, 6], // Segunda a Sábado por padrão
@@ -130,23 +108,7 @@ const ConfiguracoesMensagemModal = ({ isOpen, onClose, onSave, configuracaoInici
                         className="min-h-[120px]"
                         {...field}
                       />
-                      <div className="flex flex-wrap gap-2">
-                        <Button type="button" variant="outline" size="sm" onClick={() => inserirVariavel("{NOME}")}>
-                          Nome
-                        </Button>
-                        <Button type="button" variant="outline" size="sm" onClick={() => inserirVariavel("{VALOR_ORIGINAL}")}>
-                          Valor Original
-                        </Button>
-                        <Button type="button" variant="outline" size="sm" onClick={() => inserirVariavel("{MESES_ATRASO}")}>
-                          Meses Atraso
-                        </Button>
-                        <Button type="button" variant="outline" size="sm" onClick={() => inserirVariavel("{VALOR_CORRIGIDO}")}>
-                          Valor Corrigido
-                        </Button>
-                        <Button type="button" variant="outline" size="sm" onClick={() => inserirVariavel("{DATA_VENCIMENTO}")}>
-                          Data Vencimento
-                        </Button>
-                      </div>
+                      <MensagemVariaveisButtons onInserirVariavel={inserirVariavel} />
                     </div>
                   </FormControl>
                   <FormDescription>
@@ -213,37 +175,7 @@ const ConfiguracoesMensagemModal = ({ isOpen, onClose, onSave, configuracaoInici
                       Selecione os dias em que as mensagens podem ser enviadas.
                     </FormDescription>
                   </div>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                    {diasSemanaOpcoes.map((dia) => (
-                      <FormField
-                        key={dia.id}
-                        control={form.control}
-                        name="diasSemana"
-                        render={({ field }) => {
-                          return (
-                            <FormItem key={dia.id} className="flex flex-row items-start space-x-3 space-y-0">
-                              <FormControl>
-                                <Checkbox
-                                  checked={field.value?.includes(dia.id)}
-                                  onCheckedChange={(checked) => {
-                                    const currentValues = [...field.value];
-                                    if (checked) {
-                                      field.onChange([...currentValues, dia.id]);
-                                    } else {
-                                      field.onChange(currentValues.filter((value) => value !== dia.id));
-                                    }
-                                  }}
-                                />
-                              </FormControl>
-                              <FormLabel className="font-normal">
-                                {dia.label}
-                              </FormLabel>
-                            </FormItem>
-                          );
-                        }}
-                      />
-                    ))}
-                  </div>
+                  <DiasSemanaSelect form={form} />
                   <FormMessage />
                 </FormItem>
               )}
