@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -10,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
+import { ConfiguracaoMensagem } from '@/types/whatsapp';
 
 // Schema para validação do formulário
 const configuracaoSchema = z.object({
@@ -24,8 +24,8 @@ type ConfiguracaoMensagemValues = z.infer<typeof configuracaoSchema>;
 interface ConfiguracoesMensagemModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (config: ConfiguracaoMensagemValues) => void;
-  configuracoesAtuais?: ConfiguracaoMensagemValues;
+  onSave: (config: ConfiguracaoMensagem) => void;
+  configuracaoInicial?: ConfiguracaoMensagem;
 }
 
 const diasSemanaOpcoes = [
@@ -38,7 +38,7 @@ const diasSemanaOpcoes = [
   { id: 0, label: 'Domingo' },
 ];
 
-const ConfiguracoesMensagemModal = ({ isOpen, onClose, onSave, configuracoesAtuais }: ConfiguracoesMensagemModalProps) => {
+const ConfiguracoesMensagemModal = ({ isOpen, onClose, onSave, configuracaoInicial }: ConfiguracoesMensagemModalProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
@@ -48,7 +48,7 @@ const ConfiguracoesMensagemModal = ({ isOpen, onClose, onSave, configuracoesAtua
   // Inicializar formulário com valores padrão ou configurações atuais
   const form = useForm<ConfiguracaoMensagemValues>({
     resolver: zodResolver(configuracaoSchema),
-    defaultValues: configuracoesAtuais || {
+    defaultValues: configuracaoInicial || {
       templateMensagem: templatePadrao,
       horarioEnvio: "09:00",
       limiteDiario: 50,
