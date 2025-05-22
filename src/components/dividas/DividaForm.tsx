@@ -1,0 +1,214 @@
+
+import { useState } from 'react';
+import { z } from 'zod';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Cliente, Divida } from '@/types';
+import { CalendarIcon } from 'lucide-react';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
+
+// Schema de validação para o formulário
+const dividaSchema = z.object({
+  clienteId: z.string(),
+  valor: z.number().positive({ message: 'Valor deve ser maior que zero' }),
+  dataCompra: z.date(),
+  dataVencimento: z.date(),
+  descricao: z.string().min(3, { message: 'Descrição deve ter pelo menos 3 caracteres' })
+});
+
+type DividaFormValues = z.infer<typeof dividaSchema>;
+
+interface DividaFormProps {
+  divida?: Divida;
+  cliente: Cliente;
+  onSubmit: (data: Omit<Divida, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  onCancel: () => void;
+}
+
+const DividaForm = ({ divida, cliente, onSubmit, onCancel }: DividaFormProps) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Inicialização do formulário
+  const form = useForm<DividaFormValues>({
+    resolver: zodResolver(dividaSchema),
+    defaultValues: {
+      clienteId: cliente.id,
+      valor: divida?.valor || 0,
+      dataCompra: divida ? new Date(divida.dataCompra) : new Date(),
+      dataVencimento: divida ? new Date(divida.dataVencimento) : new Date(),
+      descricao: divida?.descricao || ''
+    }
+  });
+
+  // Função de submissão do formulário
+  const handleSubmit = async (data: DividaFormValues) => {
+    setIsSubmitting(true);
+    try {
+      // Verificar se a data de vencimento é posterior à data atual
+      const hoje = new Date();
+      const status = data.dataVencimento < hoje ? 'atrasado' : 'pendente';
+
+      await onSubmit({
+        ...data,
+        dataCompra: data.dataCompra.toISOString(),
+        dataVencimento: data.dataVencimento.toISOString(),
+        status
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+        <FormField
+          control={form.control}
+          name="valor"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Valor (R$)</FormLabel>
+              <FormControl>
+                <Input 
+                  type="number" 
+                  step="0.01" 
+                  min="0.01"
+                  placeholder="0,00" 
+                  {...field}
+                  onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="dataCompra"
+            render={({ field }) => (
+              <FormItem className="flex flex-col">
+                <FormLabel>Data da compra</FormLabel>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <FormControl>
+                      <Button
+                        variant={"outline"}
+                        className={cn(
+                          "w-full pl-3 text-left font-normal",
+                          !field.value && "text-muted-foreground"
+                        )}
+                      >
+                        {field.value ? (
+                          format(field.value, "dd/MM/yyyy", { locale: ptBR })
+                        ) : (
+                          <span>Selecione uma data</span>
+                        )}
+                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                      </Button>
+                    </FormControl>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={field.value}
+                      onSelect={field.onChange}
+                      disabled={(date) => date > new Date()}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="dataVencimento"
+            render={({ field }) => (
+              <FormItem className="flex flex-col">
+                <FormLabel>Data de vencimento</FormLabel>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <FormControl>
+                      <Button
+                        variant={"outline"}
+                        className={cn(
+                          "w-full pl-3 text-left font-normal",
+                          !field.value && "text-muted-foreground"
+                        )}
+                      >
+                        {field.value ? (
+                          format(field.value, "dd/MM/yyyy", { locale: ptBR })
+                        ) : (
+                          <span>Selecione uma data</span>
+                        )}
+                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                      </Button>
+                    </FormControl>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={field.value}
+                      onSelect={field.onChange}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <FormField
+          control={form.control}
+          name="descricao"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Descrição</FormLabel>
+              <FormControl>
+                <Textarea 
+                  placeholder="Descrição da dívida"
+                  className="resize-none"
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <div className="flex justify-end space-x-2 pt-4">
+          <Button 
+            type="button" 
+            variant="outline" 
+            onClick={onCancel}
+            disabled={isSubmitting}
+          >
+            Cancelar
+          </Button>
+          <Button 
+            type="submit"
+            disabled={isSubmitting}
+          >
+            {divida ? 'Atualizar' : 'Registrar'}
+          </Button>
+        </div>
+      </form>
+    </Form>
+  );
+};
+
+export default DividaForm;
