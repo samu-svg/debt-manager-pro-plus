@@ -123,19 +123,19 @@ const ConfiguracoesMensagemModal = ({ isOpen, onClose, onSave, configuracoesAtua
                       />
                       <div className="flex flex-wrap gap-2">
                         <Button type="button" variant="outline" size="sm" onClick={() => inserirVariavel("{NOME}")}>
-                          {NOME}
+                          Nome
                         </Button>
                         <Button type="button" variant="outline" size="sm" onClick={() => inserirVariavel("{VALOR_ORIGINAL}")}>
-                          {VALOR_ORIGINAL}
+                          Valor Original
                         </Button>
                         <Button type="button" variant="outline" size="sm" onClick={() => inserirVariavel("{MESES_ATRASO}")}>
-                          {MESES_ATRASO}
+                          Meses Atraso
                         </Button>
                         <Button type="button" variant="outline" size="sm" onClick={() => inserirVariavel("{VALOR_CORRIGIDO}")}>
-                          {VALOR_CORRIGIDO}
+                          Valor Corrigido
                         </Button>
                         <Button type="button" variant="outline" size="sm" onClick={() => inserirVariavel("{DATA_VENCIMENTO}")}>
-                          {DATA_VENCIMENTO}
+                          Data Vencimento
                         </Button>
                       </div>
                     </div>

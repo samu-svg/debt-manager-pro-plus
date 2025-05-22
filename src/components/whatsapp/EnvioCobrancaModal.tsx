@@ -1,11 +1,10 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { WhatsApp, Send } from 'lucide-react';
+import { MessageCircle, Send } from 'lucide-react';
 import WhatsAppForm from './WhatsAppForm';
 import { Cliente, Divida } from '@/types';
 import { formatarMoeda, formatarData, calcularMesesAtraso, calcularDividaCorrigida } from '@/lib/utils';
@@ -38,7 +37,7 @@ const EnvioCobrancaModal = ({ isOpen, onClose, cliente, divida, onEnviar }: Envi
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <WhatsApp className="h-5 w-5 text-green-600" />
+            <MessageCircle className="h-5 w-5 text-green-600" />
             Enviar Cobrança via WhatsApp
           </DialogTitle>
           <DialogDescription>

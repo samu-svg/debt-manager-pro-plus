@@ -10,7 +10,7 @@ import { useDividas } from '@/hooks/use-dividas';
 import { useClientes } from '@/hooks/use-clientes';
 import DividaForm from '@/components/dividas/DividaForm';
 import { formatarMoeda, formatarData } from '@/lib/utils';
-import { Search, WhatsApp } from 'lucide-react';
+import { Search, MessageCircle } from 'lucide-react';
 import ConfiguracaoEnvioAutomatico from '@/components/whatsapp/ConfiguracaoEnvioAutomatico';
 import EnvioCobrancaModal from '@/components/whatsapp/EnvioCobrancaModal';
 import { useToast } from '@/hooks/use-toast';
@@ -199,7 +199,7 @@ const Dividas = () => {
                           <Badge variant="destructive">Atrasado</Badge>
                           {mensagemEnviada && (
                             <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 flex items-center gap-1">
-                              <WhatsApp className="h-3 w-3" />
+                              <MessageCircle className="h-3 w-3" />
                               Enviado
                             </Badge>
                           )}
@@ -237,7 +237,7 @@ const Dividas = () => {
                               className="bg-green-600 hover:bg-green-700"
                               onClick={() => handleAbrirEnvioCobranca(divida.id)}
                             >
-                              <WhatsApp className="h-4 w-4 mr-1" />
+                              <MessageCircle className="h-4 w-4 mr-1" />
                               Enviar Cobrança
                             </Button>
                           )}

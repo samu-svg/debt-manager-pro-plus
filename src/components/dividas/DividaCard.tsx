@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,7 +19,7 @@ import {
   converterMesInicioJurosParaNumero 
 } from "@/lib/utils";
 import { useState } from "react";
-import { AlertTriangle, Check, WhatsApp } from "lucide-react";
+import { AlertTriangle, Check, MessageCircle } from "lucide-react";
 
 interface DividaCardProps {
   divida: Divida;
@@ -85,7 +84,7 @@ const DividaCard = ({ divida, onPagar, onEnviarWhatsApp, mensagemEnviada }: Divi
             <Badge variant={statusStyle.badge as any}>{statusStyle.label}</Badge>
             {mensagemEnviada && (
               <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 flex items-center gap-1">
-                <WhatsApp className="h-3 w-3" />
+                <MessageCircle className="h-3 w-3" />
                 Enviado
               </Badge>
             )}
@@ -170,7 +169,7 @@ const DividaCard = ({ divida, onPagar, onEnviarWhatsApp, mensagemEnviada }: Divi
                 className="bg-green-600 hover:bg-green-700"
                 onClick={() => onEnviarWhatsApp(divida.id)}
               >
-                <WhatsApp className="h-4 w-4 mr-1" />
+                <MessageCircle className="h-4 w-4 mr-1" />
                 Enviar cobrança
               </Button>
             )}
