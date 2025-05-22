@@ -57,9 +57,11 @@ const DividaForm = ({ divida, cliente, onSubmit, onCancel }: DividaFormProps) =>
       const status = data.dataVencimento < hoje ? 'atrasado' : 'pendente';
 
       await onSubmit({
-        ...data,
+        clienteId: data.clienteId,
+        valor: data.valor,
         dataCompra: data.dataCompra.toISOString(),
         dataVencimento: data.dataVencimento.toISOString(),
+        descricao: data.descricao,
         status
       });
     } finally {
@@ -124,6 +126,7 @@ const DividaForm = ({ divida, cliente, onSubmit, onCancel }: DividaFormProps) =>
                       onSelect={field.onChange}
                       disabled={(date) => date > new Date()}
                       initialFocus
+                      className="p-3 pointer-events-auto"
                     />
                   </PopoverContent>
                 </Popover>
@@ -163,6 +166,7 @@ const DividaForm = ({ divida, cliente, onSubmit, onCancel }: DividaFormProps) =>
                       selected={field.value}
                       onSelect={field.onChange}
                       initialFocus
+                      className="p-3 pointer-events-auto"
                     />
                   </PopoverContent>
                 </Popover>

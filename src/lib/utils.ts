@@ -41,9 +41,13 @@ export function calcularDiasEntreDatas(dataInicio: Date, dataFim: Date): number 
 // Calcula os meses entre duas datas (para cálculo de juros)
 export function calcularMesesEntreDatas(dataInicio: Date, dataFim: Date): number {
   const anos = dataFim.getFullYear() - dataInicio.getFullYear();
-  const meses = dataFim.getMonth() - dataInicio.getMonth();
+  const meses = anos * 12 + dataFim.getMonth() - dataInicio.getMonth();
   
-  return anos * 12 + meses + (dataFim.getDate() >= dataInicio.getDate() ? 0 : -1);
+  // Verificar se o dia do mês da data fim é anterior ao da data início
+  // Se for anterior, subtrair 1 mês do resultado
+  const ajusteDia = dataFim.getDate() < dataInicio.getDate() ? -1 : 0;
+  
+  return Math.max(0, meses + ajusteDia);
 }
 
 // Calcula juros simples
@@ -71,13 +75,25 @@ export function calcularDividaCorrigida(valorInicial: number, dataVencimento: st
   }
   
   // Calcula quantos meses se passaram desde o vencimento
-  const meses = calcularMesesEntreDatas(dataVenc, dataAtual);
+  const mesesAtraso = calcularMesesEntreDatas(dataVenc, dataAtual);
   
   // Se menos de um mês, considera 1 mês para fins de juros
-  const mesesParaCalculo = Math.max(1, meses);
+  const mesesParaCalculo = Math.max(1, mesesAtraso);
   
   // Aplica juros compostos de 3% ao mês (padrão)
   return calcularJurosCompostos(valorInicial, taxaMensal, mesesParaCalculo);
+}
+
+// Calcula quantos meses uma dívida está atrasada
+export function calcularMesesAtraso(dataVencimento: string): number {
+  const dataAtual = new Date();
+  const dataVenc = new Date(dataVencimento);
+  
+  if (dataVenc >= dataAtual) {
+    return 0;
+  }
+  
+  return calcularMesesEntreDatas(dataVenc, dataAtual);
 }
 
 // Determina o status da dívida com base na data de vencimento
@@ -87,3 +103,4 @@ export function determinarStatusDivida(dataVencimento: string): 'pendente' | 'at
   
   return dataVenc < hoje ? 'atrasado' : 'pendente';
 }
+

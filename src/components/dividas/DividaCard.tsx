@@ -12,7 +12,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Divida } from "@/types";
-import { formatarMoeda, formatarData, calcularDividaCorrigida } from "@/lib/utils";
+import { formatarMoeda, formatarData, calcularDividaCorrigida, calcularMesesAtraso } from "@/lib/utils";
 import { useState } from "react";
 import { AlertTriangle, Check } from "lucide-react";
 
@@ -51,6 +51,9 @@ const DividaCard = ({ divida, onPagar, onEnviarWhatsApp }: DividaCardProps) => {
 
   const statusStyle = getStatusStyle();
   
+  // Calcular meses de atraso
+  const mesesAtraso = divida.status === 'atrasado' ? calcularMesesAtraso(divida.dataVencimento) : 0;
+  
   // Calcular valor corrigido para dívidas atrasadas
   const valorCorrigido = divida.status === 'atrasado' 
     ? calcularDividaCorrigida(divida.valor, divida.dataVencimento) 
@@ -76,6 +79,15 @@ const DividaCard = ({ divida, onPagar, onEnviarWhatsApp }: DividaCardProps) => {
             <span className="text-sm text-muted-foreground">Vencimento:</span>
             <span className="text-sm font-medium">{formatarData(divida.dataVencimento)}</span>
           </div>
+          
+          {divida.status === 'atrasado' && (
+            <div className="flex justify-between">
+              <span className="text-sm text-danger-600">Em atraso há:</span>
+              <span className="text-sm font-medium text-danger-600">
+                {mesesAtraso} {mesesAtraso === 1 ? 'mês' : 'meses'}
+              </span>
+            </div>
+          )}
           
           {temJuros && (
             <div className="flex justify-between items-center mt-2">
@@ -144,6 +156,14 @@ const DividaCard = ({ divida, onPagar, onEnviarWhatsApp }: DividaCardProps) => {
                 <span>Data de vencimento:</span>
                 <span className="font-medium">{formatarData(divida.dataVencimento)}</span>
               </div>
+              {divida.status === 'atrasado' && (
+                <div className="flex justify-between">
+                  <span>Meses em atraso:</span>
+                  <span className="font-medium text-danger-600">
+                    {mesesAtraso} {mesesAtraso === 1 ? 'mês' : 'meses'}
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between">
                 <span>Taxa de juros:</span>
                 <span className="font-medium">3% ao mês</span>
