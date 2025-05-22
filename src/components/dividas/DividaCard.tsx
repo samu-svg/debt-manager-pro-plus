@@ -20,15 +20,16 @@ import {
   converterMesInicioJurosParaNumero 
 } from "@/lib/utils";
 import { useState } from "react";
-import { AlertTriangle, Check } from "lucide-react";
+import { AlertTriangle, Check, WhatsApp } from "lucide-react";
 
 interface DividaCardProps {
   divida: Divida;
   onPagar: (id: string) => void;
   onEnviarWhatsApp?: (id: string) => void;
+  mensagemEnviada?: { data: string } | null;
 }
 
-const DividaCard = ({ divida, onPagar, onEnviarWhatsApp }: DividaCardProps) => {
+const DividaCard = ({ divida, onPagar, onEnviarWhatsApp, mensagemEnviada }: DividaCardProps) => {
   const [showJurosDialog, setShowJurosDialog] = useState(false);
   
   // Determinar estilo com base no status
@@ -80,7 +81,15 @@ const DividaCard = ({ divida, onPagar, onEnviarWhatsApp }: DividaCardProps) => {
       <CardHeader className={statusStyle.bg}>
         <CardTitle className="flex justify-between items-center text-base">
           <span>{formatarMoeda(divida.valor)}</span>
-          <Badge variant={statusStyle.badge as any}>{statusStyle.label}</Badge>
+          <div className="flex items-center gap-2">
+            <Badge variant={statusStyle.badge as any}>{statusStyle.label}</Badge>
+            {mensagemEnviada && (
+              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 flex items-center gap-1">
+                <WhatsApp className="h-3 w-3" />
+                Enviado
+              </Badge>
+            )}
+          </div>
         </CardTitle>
       </CardHeader>
       <CardContent className="pt-4">
@@ -135,9 +144,15 @@ const DividaCard = ({ divida, onPagar, onEnviarWhatsApp }: DividaCardProps) => {
           <div className="mt-2">
             <p className="text-sm text-muted-foreground">{divida.descricao}</p>
           </div>
+          
+          {mensagemEnviada && (
+            <div className="mt-2 text-sm text-muted-foreground">
+              Mensagem enviada em {formatarData(mensagemEnviada.data)}
+            </div>
+          )}
         </div>
       </CardContent>
-      <CardFooter className="flex justify-between border-t pt-4">
+      <CardFooter className="flex flex-wrap gap-2 justify-between border-t pt-4">
         {divida.status !== 'pago' && (
           <>
             <Button 
@@ -148,13 +163,14 @@ const DividaCard = ({ divida, onPagar, onEnviarWhatsApp }: DividaCardProps) => {
               <Check className="h-4 w-4 mr-1" /> Marcar como pago
             </Button>
             
-            {divida.status === 'atrasado' && onEnviarWhatsApp && (
+            {divida.status === 'atrasado' && onEnviarWhatsApp && !mensagemEnviada && (
               <Button 
                 variant="default" 
                 size="sm"
                 className="bg-green-600 hover:bg-green-700"
                 onClick={() => onEnviarWhatsApp(divida.id)}
               >
+                <WhatsApp className="h-4 w-4 mr-1" />
                 Enviar cobrança
               </Button>
             )}
