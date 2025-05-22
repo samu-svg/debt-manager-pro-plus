@@ -12,7 +12,13 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Divida } from "@/types";
-import { formatarMoeda, formatarData, calcularDividaCorrigida, calcularMesesAtraso } from "@/lib/utils";
+import { 
+  formatarMoeda, 
+  formatarData, 
+  calcularDividaCorrigida, 
+  calcularMesesAtraso, 
+  converterMesInicioJurosParaNumero 
+} from "@/lib/utils";
 import { useState } from "react";
 import { AlertTriangle, Check } from "lucide-react";
 
@@ -51,15 +57,23 @@ const DividaCard = ({ divida, onPagar, onEnviarWhatsApp }: DividaCardProps) => {
 
   const statusStyle = getStatusStyle();
   
+  // Obter taxa de juros (padrão ou personalizada)
+  const taxaJuros = divida.taxaJuros ?? 3;
+  
+  // Obter mês de início dos juros (padrão ou personalizado)
+  const mesInicioJuros = divida.mesInicioJuros ?? '2º mês';
+  
   // Calcular meses de atraso
   const mesesAtraso = divida.status === 'atrasado' ? calcularMesesAtraso(divida.dataVencimento) : 0;
   
-  // Calcular valor corrigido para dívidas atrasadas
+  // Calcular valor corrigido para dívidas atrasadas com as configurações personalizadas
   const valorCorrigido = divida.status === 'atrasado' 
-    ? calcularDividaCorrigida(divida.valor, divida.dataVencimento) 
+    ? calcularDividaCorrigida(divida.valor, divida.dataVencimento, taxaJuros, mesInicioJuros) 
     : divida.valor;
   
   const temJuros = valorCorrigido > divida.valor;
+  const mesesCarencia = converterMesInicioJurosParaNumero(mesInicioJuros) - 1;
+  const mesesEfetivos = Math.max(0, mesesAtraso - mesesCarencia);
 
   return (
     <Card className={`overflow-hidden transition-all ${divida.status === 'atrasado' ? 'border-danger-400' : ''}`}>
@@ -81,12 +95,24 @@ const DividaCard = ({ divida, onPagar, onEnviarWhatsApp }: DividaCardProps) => {
           </div>
           
           {divida.status === 'atrasado' && (
-            <div className="flex justify-between">
-              <span className="text-sm text-danger-600">Em atraso há:</span>
-              <span className="text-sm font-medium text-danger-600">
-                {mesesAtraso} {mesesAtraso === 1 ? 'mês' : 'meses'}
-              </span>
-            </div>
+            <>
+              <div className="flex justify-between">
+                <span className="text-sm text-danger-600">Em atraso há:</span>
+                <span className="text-sm font-medium text-danger-600">
+                  {mesesAtraso} {mesesAtraso === 1 ? 'mês' : 'meses'}
+                </span>
+              </div>
+              
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Taxa de juros:</span>
+                <span className="text-sm font-medium">{taxaJuros}% ao mês</span>
+              </div>
+              
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Início dos juros:</span>
+                <span className="text-sm font-medium">{mesInicioJuros}</span>
+              </div>
+            </>
           )}
           
           {temJuros && (
@@ -142,7 +168,7 @@ const DividaCard = ({ divida, onPagar, onEnviarWhatsApp }: DividaCardProps) => {
           <DialogHeader>
             <DialogTitle>Detalhes do cálculo de juros</DialogTitle>
             <DialogDescription>
-              Cálculo de juros compostos de 3% ao mês
+              Cálculo de juros compostos de {taxaJuros}% ao mês a partir do {mesInicioJuros}
             </DialogDescription>
           </DialogHeader>
           
@@ -157,16 +183,30 @@ const DividaCard = ({ divida, onPagar, onEnviarWhatsApp }: DividaCardProps) => {
                 <span className="font-medium">{formatarData(divida.dataVencimento)}</span>
               </div>
               {divida.status === 'atrasado' && (
-                <div className="flex justify-between">
-                  <span>Meses em atraso:</span>
-                  <span className="font-medium text-danger-600">
-                    {mesesAtraso} {mesesAtraso === 1 ? 'mês' : 'meses'}
-                  </span>
-                </div>
+                <>
+                  <div className="flex justify-between">
+                    <span>Meses em atraso:</span>
+                    <span className="font-medium text-danger-600">
+                      {mesesAtraso} {mesesAtraso === 1 ? 'mês' : 'meses'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Carência:</span>
+                    <span className="font-medium">
+                      {mesesCarencia} {mesesCarencia === 1 ? 'mês' : 'meses'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Meses efetivos para juros:</span>
+                    <span className="font-medium text-danger-600">
+                      {mesesEfetivos} {mesesEfetivos === 1 ? 'mês' : 'meses'}
+                    </span>
+                  </div>
+                </>
               )}
               <div className="flex justify-between">
                 <span>Taxa de juros:</span>
-                <span className="font-medium">3% ao mês</span>
+                <span className="font-medium">{taxaJuros}% ao mês</span>
               </div>
               <div className="flex justify-between">
                 <span>Valor dos juros:</span>
@@ -177,6 +217,19 @@ const DividaCard = ({ divida, onPagar, onEnviarWhatsApp }: DividaCardProps) => {
                 <span className="font-bold text-danger-600">{formatarMoeda(valorCorrigido)}</span>
               </div>
             </div>
+            {mesesEfetivos > 0 && (
+              <div className="text-sm text-muted-foreground">
+                <p>Fórmula: Valor Original × (1 + taxa/100)^(Meses de Atraso - Meses de Carência)</p>
+                <p className="mt-1">
+                  {formatarMoeda(divida.valor)} × (1 + {taxaJuros}/100)^{mesesEfetivos} = {formatarMoeda(valorCorrigido)}
+                </p>
+              </div>
+            )}
+            {mesesEfetivos <= 0 && (
+              <div className="text-sm text-muted-foreground">
+                <p>Ainda dentro do período de carência. Não há juros aplicáveis.</p>
+              </div>
+            )}
           </div>
           
           <DialogFooter>

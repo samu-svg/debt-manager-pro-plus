@@ -9,7 +9,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Cliente, Divida } from '@/types';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Cliente, Divida, MesInicioJuros } from '@/types';
 import { CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -21,7 +22,9 @@ const dividaSchema = z.object({
   valor: z.number().positive({ message: 'Valor deve ser maior que zero' }),
   dataCompra: z.date(),
   dataVencimento: z.date(),
-  descricao: z.string().min(3, { message: 'Descrição deve ter pelo menos 3 caracteres' })
+  descricao: z.string().min(3, { message: 'Descrição deve ter pelo menos 3 caracteres' }),
+  taxaJuros: z.number().min(0.01, { message: 'Taxa deve ser maior que 0,01%' }).max(100, { message: 'Taxa deve ser menor que 100%' }).default(3),
+  mesInicioJuros: z.enum(['1º mês', '2º mês', '3º mês', '4º mês', '5º mês', '6º mês']).default('2º mês')
 });
 
 type DividaFormValues = z.infer<typeof dividaSchema>;
@@ -44,7 +47,9 @@ const DividaForm = ({ divida, cliente, onSubmit, onCancel }: DividaFormProps) =>
       valor: divida?.valor || 0,
       dataCompra: divida ? new Date(divida.dataCompra) : new Date(),
       dataVencimento: divida ? new Date(divida.dataVencimento) : new Date(),
-      descricao: divida?.descricao || ''
+      descricao: divida?.descricao || '',
+      taxaJuros: divida?.taxaJuros || 3,
+      mesInicioJuros: divida?.mesInicioJuros || '2º mês'
     }
   });
 
@@ -62,6 +67,8 @@ const DividaForm = ({ divida, cliente, onSubmit, onCancel }: DividaFormProps) =>
         dataCompra: data.dataCompra.toISOString(),
         dataVencimento: data.dataVencimento.toISOString(),
         descricao: data.descricao,
+        taxaJuros: data.taxaJuros,
+        mesInicioJuros: data.mesInicioJuros,
         status
       });
     } finally {
@@ -88,6 +95,57 @@ const DividaForm = ({ divida, cliente, onSubmit, onCancel }: DividaFormProps) =>
                   onChange={(e) => field.onChange(parseFloat(e.target.value))}
                 />
               </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="taxaJuros"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Taxa de Juros (%)</FormLabel>
+              <FormControl>
+                <div className="relative">
+                  <Input 
+                    type="number" 
+                    step="0.1" 
+                    min="0.01"
+                    max="100"
+                    placeholder="3.0" 
+                    {...field}
+                    onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                  />
+                  <span className="absolute right-3 top-2 text-muted-foreground">% ao mês</span>
+                </div>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="mesInicioJuros"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Cobrar juros a partir do:</FormLabel>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o mês inicial" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="1º mês">1º mês</SelectItem>
+                  <SelectItem value="2º mês">2º mês</SelectItem>
+                  <SelectItem value="3º mês">3º mês</SelectItem>
+                  <SelectItem value="4º mês">4º mês</SelectItem>
+                  <SelectItem value="5º mês">5º mês</SelectItem>
+                  <SelectItem value="6º mês">6º mês</SelectItem>
+                </SelectContent>
+              </Select>
               <FormMessage />
             </FormItem>
           )}

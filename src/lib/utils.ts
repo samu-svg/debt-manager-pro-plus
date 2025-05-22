@@ -1,6 +1,7 @@
 
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
+import { MesInicioJuros } from "@/types"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -50,6 +51,20 @@ export function calcularMesesEntreDatas(dataInicio: Date, dataFim: Date): number
   return Math.max(0, meses + ajusteDia);
 }
 
+// Converte o mês de início dos juros em número (1, 2, 3, etc.)
+export function converterMesInicioJurosParaNumero(mesInicioJuros: MesInicioJuros): number {
+  const meses: Record<MesInicioJuros, number> = {
+    '1º mês': 1,
+    '2º mês': 2,
+    '3º mês': 3,
+    '4º mês': 4,
+    '5º mês': 5,
+    '6º mês': 6
+  };
+  
+  return meses[mesInicioJuros];
+}
+
 // Calcula juros simples
 export function calcularJurosSimples(valorInicial: number, taxa: number, meses: number): number {
   // taxa em percentual (ex: 3% = 0.03)
@@ -64,8 +79,13 @@ export function calcularJurosCompostos(valorInicial: number, taxa: number, meses
   return valorInicial * Math.pow(1 + taxaDecimal, meses);
 }
 
-// Calcula o valor da dívida corrigida com juros
-export function calcularDividaCorrigida(valorInicial: number, dataVencimento: string, taxaMensal: number = 3): number {
+// Calcula o valor da dívida corrigida com juros personalizados
+export function calcularDividaCorrigida(
+  valorInicial: number, 
+  dataVencimento: string, 
+  taxaJuros: number = 3, 
+  mesInicioJuros: MesInicioJuros = '2º mês'
+): number {
   const dataAtual = new Date();
   const dataVenc = new Date(dataVencimento);
   
@@ -77,11 +97,19 @@ export function calcularDividaCorrigida(valorInicial: number, dataVencimento: st
   // Calcula quantos meses se passaram desde o vencimento
   const mesesAtraso = calcularMesesEntreDatas(dataVenc, dataAtual);
   
-  // Se menos de um mês, considera 1 mês para fins de juros
-  const mesesParaCalculo = Math.max(1, mesesAtraso);
+  // Converte o mês de início dos juros para número
+  const mesesCarencia = converterMesInicioJurosParaNumero(mesInicioJuros) - 1;
   
-  // Aplica juros compostos de 3% ao mês (padrão)
-  return calcularJurosCompostos(valorInicial, taxaMensal, mesesParaCalculo);
+  // Calcula meses efetivos para aplicação dos juros
+  // Se o atraso for menor que a carência, não há juros
+  const mesesEfetivos = Math.max(0, mesesAtraso - mesesCarencia);
+  
+  if (mesesEfetivos <= 0) {
+    return valorInicial;
+  }
+  
+  // Aplica juros compostos com a taxa personalizada
+  return calcularJurosCompostos(valorInicial, taxaJuros, mesesEfetivos);
 }
 
 // Calcula quantos meses uma dívida está atrasada
@@ -103,4 +131,3 @@ export function determinarStatusDivida(dataVencimento: string): 'pendente' | 'at
   
   return dataVenc < hoje ? 'atrasado' : 'pendente';
 }
-
