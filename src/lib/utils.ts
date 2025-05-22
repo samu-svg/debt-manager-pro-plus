@@ -131,3 +131,20 @@ export function determinarStatusDivida(dataVencimento: string): 'pendente' | 'at
   
   return dataVenc < hoje ? 'atrasado' : 'pendente';
 }
+
+// Função para carregar variáveis de ambiente
+export function getEnvVar(name: string, defaultValue: string = ''): string {
+  if (typeof process !== 'undefined' && process.env && process.env[name]) {
+    return process.env[name] as string;
+  }
+  return defaultValue;
+}
+
+// Configuração da conexão com PostgreSQL
+export const dbConfig = {
+  host: getEnvVar('POSTGRES_HOST', 'localhost'),
+  port: parseInt(getEnvVar('POSTGRES_PORT', '5432')),
+  database: getEnvVar('POSTGRES_DB', 'sistema_devedores'),
+  user: getEnvVar('POSTGRES_USER', 'admin'),
+  password: getEnvVar('POSTGRES_PASSWORD', 'senha123')
+};

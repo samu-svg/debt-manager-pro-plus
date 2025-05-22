@@ -1,0 +1,43 @@
+
+version: '3.8'
+services:
+  postgres:
+    image: postgres:15.3-alpine
+    container_name: sistema-devedores-db
+    restart: always
+    environment:
+      POSTGRES_DB: sistema_devedores
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: senha123
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=pt_BR.UTF-8"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - devedores-network
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: sistema-devedores-pgadmin
+    restart: always
+    depends_on:
+      - postgres
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@devedores.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+    ports:
+      - "8080:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - devedores-network
+
+volumes:
+  postgres_data:
+  pgadmin_data:
+
+networks:
+  devedores-network:
+    driver: bridge
