@@ -65,10 +65,30 @@ export function construirMensagem(
   mesesAtraso: number,
   valorCorrigido: number
 ): string {
+  // Replace template variables with actual values
   return template
     .replace(/{NOME}/g, cliente.nome)
     .replace(/{VALOR_ORIGINAL}/g, divida.valor_original.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }))
     .replace(/{MESES_ATRASO}/g, mesesAtraso.toString())
     .replace(/{VALOR_CORRIGIDO}/g, valorCorrigido.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }))
-    .replace(/{DATA_VENCIMENTO}/g, new Date(divida.data_vencimento).toLocaleDateString('pt-BR'));
+    .replace(/{DATA_VENCIMENTO}/g, new Date(divida.data_vencimento).toLocaleDateString('pt-BR'))
+    .replace(/{CPF}/g, cliente.cpf);
+}
+
+// Interface para registros de envio (monitoring)
+export interface LogEnvioMensagem {
+  id: string;
+  comunicacaoId: string;
+  timestamp: string;
+  status: string;
+  detalhes: string;
+}
+
+// Interface para estatísticas de envio
+export interface EstatisticasEnvio {
+  total: number;
+  enviadas: number;
+  lidas: number;
+  erros: number;
+  taxaEntrega: number; // percentage
 }
