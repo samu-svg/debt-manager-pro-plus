@@ -94,8 +94,97 @@
 
   body {
     @apply bg-background text-foreground;
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  /* Minimum touch target size for buttons/interactive elements */
+  button, 
+  [role="button"], 
+  a.btn,
+  .btn,
+  a[href]:not(.inline-link),
+  input[type="submit"],
+  input[type="image"],
+  input[type="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Improve form elements on mobile */
+  input, 
+  select, 
+  textarea {
+    @apply text-base;
+    font-size: 16px; /* Prevent iOS zoom */
+  }
+  
+  /* Table responsiveness */
+  .table-container {
+    @apply w-full overflow-x-auto;
+  }
+  
+  /* Card layouts */
+  .card-grid {
+    @apply grid gap-4;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  }
+  
+  /* Responsive typography */
+  h1 { @apply text-2xl sm:text-3xl md:text-4xl; }
+  h2 { @apply text-xl sm:text-2xl md:text-3xl; }
+  h3 { @apply text-lg sm:text-xl md:text-2xl; }
+  
+  /* Improve spacing for better touch targets */
+  .touch-friendly > * + * {
+    @apply mt-2;
+  }
+}
+
+/* Grid and flex helper classes */
+@layer components {
+  .responsive-grid {
+    @apply grid gap-4;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  }
+  
+  .responsive-grid-tight {
+    @apply grid gap-3;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  }
+  
+  .responsive-flex {
+    @apply flex flex-col sm:flex-row gap-4;
   }
 }
 
 /* Adiciona fontes do Google */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* Mobile optimizations */
+@media (max-width: 767px) {
+  .hide-on-mobile {
+    display: none;
+  }
+  
+  .mobile-full {
+    width: 100%;
+  }
+  
+  .mobile-stack {
+    @apply flex flex-col;
+  }
+  
+  .mobile-px-0 {
+    padding-left: 0;
+    padding-right: 0;
+  }
+  
+  .mobile-center {
+    @apply justify-center items-center text-center;
+  }
+  
+  /* Increase touch targets */
+  .btn, button {
+    @apply px-4 py-2;
+  }
+}

@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Calculator, CreditCard, Home, Users, ChevronLeft, ChevronRight } from "lucide-react";
+import { useIsMobile, useIsTablet } from "@/hooks/use-mobile";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -11,6 +12,11 @@ interface SidebarProps {
 
 const Sidebar = ({ isOpen, toggleSidebar }: SidebarProps) => {
   const location = useLocation();
+  const isMobile = useIsMobile();
+  const isTablet = useIsTablet();
+  
+  // Auto-collapse sidebar on mobile when navigating
+  const shouldCollapse = isMobile || isTablet;
   
   const sidebarItems = [
     {
@@ -40,7 +46,9 @@ const Sidebar = ({ isOpen, toggleSidebar }: SidebarProps) => {
       className={cn(
         "fixed inset-y-0 left-0 z-50 flex flex-col bg-sidebar border-r border-sidebar-border transition-all duration-300 ease-in-out",
         isOpen ? "w-64" : "w-[70px]",
-        "md:relative md:left-0"
+        shouldCollapse && !isOpen ? "-translate-x-full" : "translate-x-0",
+        "md:relative md:left-0 md:translate-x-0",
+        isMobile && isOpen ? "shadow-xl" : ""
       )}
     >
       <div className="flex items-center justify-between h-16 px-4 border-b border-sidebar-border">
@@ -52,13 +60,18 @@ const Sidebar = ({ isOpen, toggleSidebar }: SidebarProps) => {
           size="icon" 
           onClick={toggleSidebar}
           className="text-white hover:text-white hover:bg-sidebar-accent"
+          aria-label={isOpen ? "Collapse sidebar" : "Expand sidebar"}
         >
           {isOpen ? <ChevronLeft /> : <ChevronRight />}
         </Button>
       </div>
       <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
         {sidebarItems.map((item) => (
-          <Link key={item.href} to={item.href}>
+          <Link 
+            key={item.href} 
+            to={item.href}
+            onClick={() => shouldCollapse && isOpen && toggleSidebar()}
+          >
             <Button
               variant="ghost"
               className={cn(
@@ -86,6 +99,15 @@ const Sidebar = ({ isOpen, toggleSidebar }: SidebarProps) => {
           )}
         </div>
       </div>
+      
+      {/* Mobile overlay backdrop when sidebar is open */}
+      {isMobile && isOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40"
+          onClick={toggleSidebar}
+          aria-hidden="true"
+        />
+      )}
     </aside>
   );
 };
