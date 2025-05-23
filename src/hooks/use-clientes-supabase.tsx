@@ -2,9 +2,8 @@
 import { useState, useEffect } from 'react';
 import { Cliente } from '@/types';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
-import { formatarCPF, formatarTelefone } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
+import * as ClientesService from '@/services/clientes-service';
 
 export const useClientesSupabase = () => {
   const [clientes, setClientes] = useState<Cliente[]>([]);
@@ -12,18 +11,6 @@ export const useClientesSupabase = () => {
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
   const { user, organization } = useAuth();
-
-  // Converter dados do banco para o formato da aplicação
-  const mapDbClienteToCliente = (dbCliente: any): Cliente => {
-    return {
-      id: dbCliente.id.toString(),
-      nome: dbCliente.nome,
-      cpf: dbCliente.cpf || '',
-      telefone: dbCliente.telefone || '',
-      createdAt: dbCliente.created_at || new Date().toISOString(),
-      updatedAt: dbCliente.updated_at || new Date().toISOString()
-    };
-  };
 
   // Carregar todos os clientes
   const loadClientes = async () => {
@@ -37,20 +24,9 @@ export const useClientesSupabase = () => {
         return;
       }
 
-      // Usando o tipo 'any' temporariamente para evitar erros de TypeScript
-      // até que o Supabase regenere os tipos
-      const { data, error: supaError } = await (supabase as any)
-        .from('clientes')
-        .select('*')
-        .eq('organizacao_id', organization.id);
-
-      if (supaError) {
-        console.error('Erro ao buscar clientes:', supaError);
-        throw supaError;
-      }
+      const clientesMapeados = await ClientesService.fetchClientes(organization.id);
+      console.log('Clientes carregados:', clientesMapeados);
       
-      console.log('Clientes carregados:', data);
-      const clientesMapeados = data ? data.map(mapDbClienteToCliente) : [];
       setClientes(clientesMapeados);
       setError(null);
     } catch (err) {
@@ -69,14 +45,7 @@ export const useClientesSupabase = () => {
   // Carregar cliente por ID
   const getCliente = async (id: string) => {
     try {
-      const { data, error: supaError } = await (supabase as any)
-        .from('clientes')
-        .select('*')
-        .eq('id', id)
-        .single();
-
-      if (supaError) throw supaError;
-      return mapDbClienteToCliente(data);
+      return await ClientesService.fetchClienteById(id);
     } catch (err) {
       console.error('Erro ao buscar cliente:', err);
       setError('Erro ao buscar cliente');
@@ -101,28 +70,11 @@ export const useClientesSupabase = () => {
         return null;
       }
 
-      const novoClienteDB = {
-        nome: cliente.nome,
-        cpf: cliente.cpf,
-        telefone: cliente.telefone,
-        organizacao_id: organization.id
-      };
-
-      console.log('Criando cliente:', novoClienteDB);
-
-      const { data, error: supaError } = await (supabase as any)
-        .from('clientes')
-        .insert(novoClienteDB)
-        .select()
-        .single();
-
-      if (supaError) {
-        console.error('Erro ao criar cliente:', supaError);
-        throw supaError;
-      }
-
-      console.log('Cliente criado com sucesso:', data);
-      const novoCliente = mapDbClienteToCliente(data);
+      console.log('Criando cliente:', cliente);
+      
+      const novoCliente = await ClientesService.createCliente(cliente, organization.id);
+      console.log('Cliente criado com sucesso:', novoCliente);
+      
       setClientes(prev => [...prev, novoCliente]);
       
       toast({
@@ -144,31 +96,15 @@ export const useClientesSupabase = () => {
   };
 
   // Atualizar cliente existente
-  const atualizarCliente = async (id: string, updates: Partial<Omit<Cliente, 'id' | 'createdAt' | 'updatedAt'>>) => {
+  const atualizarCliente = async (
+    id: string, 
+    updates: Partial<Omit<Cliente, 'id' | 'createdAt' | 'updatedAt'>>
+  ) => {
     try {
       console.log('Atualizando cliente:', id, updates);
 
-      const clienteDB = {
-        nome: updates.nome,
-        cpf: updates.cpf,
-        telefone: updates.telefone,
-        updated_at: new Date().toISOString()
-      };
-
-      const { data, error: supaError } = await (supabase as any)
-        .from('clientes')
-        .update(clienteDB)
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (supaError) {
-        console.error('Erro ao atualizar cliente no Supabase:', supaError);
-        throw supaError;
-      }
-
-      console.log('Cliente atualizado com sucesso:', data);
-      const clienteAtualizado = mapDbClienteToCliente(data);
+      const clienteAtualizado = await ClientesService.updateCliente(id, updates);
+      console.log('Cliente atualizado com sucesso:', clienteAtualizado);
       
       setClientes(prev => prev.map(c => c.id === id ? clienteAtualizado : c));
       
@@ -193,16 +129,8 @@ export const useClientesSupabase = () => {
   // Remover cliente
   const removerCliente = async (id: string) => {
     try {
-      const { error: supaError, data } = await (supabase as any)
-        .from('clientes')
-        .delete()
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (supaError) throw supaError;
+      const clienteRemovido = await ClientesService.removeCliente(id);
       
-      const clienteRemovido = mapDbClienteToCliente(data);
       setClientes(prev => prev.filter(c => c.id !== id));
       
       toast({
@@ -228,26 +156,7 @@ export const useClientesSupabase = () => {
     try {
       if (!organization?.id) return [];
       
-      const termoLowerCase = termo.toLowerCase();
-      const cpfLimpo = termo.replace(/\D/g, '');
-      
-      console.log('Buscando clientes por termo:', termoLowerCase, 'ou CPF:', cpfLimpo);
-      
-      // Usando o tipo 'any' temporariamente para evitar erros de TypeScript
-      let query = (supabase as any)
-        .from('clientes')
-        .select('*')
-        .eq('organizacao_id', organization.id);
-        
-      // Aplicar filtros usando ilike para busca parcial case-insensitive
-      query = query.or(`nome.ilike.%${termoLowerCase}%,cpf.ilike.%${cpfLimpo}%`);
-      
-      const { data, error: supaError } = await query;
-      
-      if (supaError) throw supaError;
-      
-      console.log('Resultados da busca:', data);
-      return data ? data.map(mapDbClienteToCliente) : [];
+      return await ClientesService.searchClientes(termo, organization.id);
     } catch (err) {
       console.error('Erro ao buscar clientes:', err);
       setError('Erro ao buscar clientes');
