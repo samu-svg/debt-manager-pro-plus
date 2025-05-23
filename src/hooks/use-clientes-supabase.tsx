@@ -18,9 +18,20 @@ export const useClientesSupabase = () => {
       setLoading(true);
       console.log('Carregando clientes da organização:', organization?.id);
       
-      if (!user || !organization?.id) {
-        console.error('Usuário não autenticado ou sem organização');
+      if (!user) {
+        console.error('Usuário não autenticado');
         setClientes([]);
+        return;
+      }
+
+      if (!organization?.id) {
+        console.error('Usuário não possui organização associada');
+        setClientes([]);
+        toast({
+          title: 'Erro',
+          description: 'Você precisa estar associado a uma organização para gerenciar clientes',
+          variant: 'destructive',
+        });
         return;
       }
 
@@ -61,16 +72,26 @@ export const useClientesSupabase = () => {
   // Adicionar novo cliente
   const criarCliente = async (cliente: Omit<Cliente, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
+      if (!user) {
+        toast({
+          title: 'Erro',
+          description: 'Você precisa estar logado para criar clientes',
+          variant: 'destructive',
+        });
+        return null;
+      }
+
       if (!organization?.id) {
         toast({
           title: 'Erro',
-          description: 'Organização não encontrada',
+          description: 'Você precisa estar associado a uma organização para criar clientes',
           variant: 'destructive',
         });
         return null;
       }
 
       console.log('Criando cliente:', cliente);
+      console.log('Organização ID:', organization.id);
       
       const novoCliente = await ClientesService.createCliente(cliente, organization.id);
       console.log('Cliente criado com sucesso:', novoCliente);
@@ -88,7 +109,7 @@ export const useClientesSupabase = () => {
       setError('Erro ao criar cliente');
       toast({
         title: 'Erro',
-        description: 'Não foi possível cadastrar o cliente',
+        description: 'Não foi possível cadastrar o cliente. Verifique se todos os campos estão preenchidos corretamente.',
         variant: 'destructive',
       });
       return null;
@@ -166,7 +187,7 @@ export const useClientesSupabase = () => {
 
   // Carregar clientes na inicialização
   useEffect(() => {
-    if (user && organization) {
+    if (user && organization?.id) {
       loadClientes();
     }
   }, [user, organization]);

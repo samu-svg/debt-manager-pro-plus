@@ -7,7 +7,7 @@ import { mapDbClienteToCliente, prepareClienteForDb } from '@/utils/cliente-mapp
  * Busca todos os clientes de uma organização
  */
 export const fetchClientes = async (organizacaoId: string) => {
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from('clientes')
     .select('*')
     .eq('organizacao_id', organizacaoId);
@@ -21,7 +21,7 @@ export const fetchClientes = async (organizacaoId: string) => {
  * Busca um cliente específico por ID
  */
 export const fetchClienteById = async (id: string) => {
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from('clientes')
     .select('*')
     .eq('id', id)
@@ -41,7 +41,7 @@ export const createCliente = async (
 ) => {
   const clienteDb = prepareClienteForDb(cliente, organizacaoId);
   
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from('clientes')
     .insert(clienteDb)
     .select()
@@ -66,7 +66,7 @@ export const updateCliente = async (
     updated_at: new Date().toISOString()
   };
 
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from('clientes')
     .update(clienteDb)
     .eq('id', id)
@@ -82,7 +82,7 @@ export const updateCliente = async (
  * Remove um cliente
  */
 export const removeCliente = async (id: string) => {
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from('clientes')
     .delete()
     .eq('id', id)
@@ -103,7 +103,7 @@ export const searchClientes = async (termo: string, organizacaoId: string) => {
   const termoLowerCase = termo.toLowerCase();
   const cpfLimpo = termo.replace(/\D/g, '');
   
-  let query = (supabase as any)
+  let query = supabase
     .from('clientes')
     .select('*')
     .eq('organizacao_id', organizacaoId);
