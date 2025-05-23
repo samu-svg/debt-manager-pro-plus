@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2 } from 'lucide-react';
+import { Loader2, AlertTriangle } from 'lucide-react';
 
 const Register = () => {
   const [email, setEmail] = useState('');
@@ -14,14 +14,17 @@ const Register = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [organizationName, setOrganizationName] = useState('');
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { signUp } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage(null);
     
     if (password !== confirmPassword) {
+      setErrorMessage('As senhas não correspondem');
       toast({
         title: 'Senhas não correspondem',
         description: 'A senha e a confirmação de senha devem ser iguais.',
@@ -31,6 +34,7 @@ const Register = () => {
     }
 
     if (password.length < 8) {
+      setErrorMessage('A senha deve ter pelo menos 8 caracteres');
       toast({
         title: 'Senha muito curta',
         description: 'A senha deve ter pelo menos 8 caracteres.',
@@ -39,15 +43,39 @@ const Register = () => {
       return;
     }
     
+    if (!organizationName.trim()) {
+      setErrorMessage('O nome da organização é obrigatório');
+      toast({
+        title: 'Erro de validação',
+        description: 'Informe o nome da sua empresa/organização.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
     setLoading(true);
     
     try {
+      console.log('Enviando solicitação de registro...');
       const { error } = await signUp(email, password, organizationName);
       
       if (error) {
+        console.error('Erro retornado:', error);
+        let errorMsg = 'Verifique os dados e tente novamente.';
+        
+        // Tratamento específico para erros comuns
+        if (error.message?.includes('email')) {
+          errorMsg = 'Este email já está sendo usado ou é inválido.';
+        } else if (error.message?.includes('permission') || error.message?.includes('policy')) {
+          errorMsg = 'Erro de permissão. Contate o administrador do sistema.';
+        } else if (error.message) {
+          errorMsg = error.message;
+        }
+        
+        setErrorMessage(errorMsg);
         toast({
           title: 'Erro ao registrar',
-          description: error.message || 'Verifique os dados e tente novamente.',
+          description: errorMsg,
           variant: 'destructive',
         });
       } else {
@@ -57,10 +85,13 @@ const Register = () => {
         });
         navigate('/auth/login');
       }
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Erro inesperado:', error);
+      const errorMsg = error?.message || 'Ocorreu um erro ao tentar registrar sua conta.';
+      setErrorMessage(errorMsg);
       toast({
         title: 'Erro inesperado',
-        description: 'Ocorreu um erro ao tentar registrar sua conta.',
+        description: errorMsg,
         variant: 'destructive',
       });
     } finally {
@@ -78,10 +109,16 @@ const Register = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {errorMessage && (
+            <div className="mb-4 rounded-md bg-destructive/15 p-3 text-sm text-destructive flex items-start">
+              <AlertTriangle className="mr-2 h-4 w-4 mt-0.5 flex-shrink-0" />
+              <span>{errorMessage}</span>
+            </div>
+          )}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <label htmlFor="organization" className="text-sm font-medium">
-                Nome da Empresa
+                Nome da Empresa <span className="text-destructive">*</span>
               </label>
               <Input
                 id="organization"
@@ -90,11 +127,12 @@ const Register = () => {
                 value={organizationName}
                 onChange={(e) => setOrganizationName(e.target.value)}
                 required
+                className={organizationName.trim() === '' && errorMessage ? 'border-destructive' : ''}
               />
             </div>
             <div className="space-y-2">
               <label htmlFor="email" className="text-sm font-medium">
-                Email
+                Email <span className="text-destructive">*</span>
               </label>
               <Input
                 id="email"
@@ -107,7 +145,7 @@ const Register = () => {
             </div>
             <div className="space-y-2">
               <label htmlFor="password" className="text-sm font-medium">
-                Senha
+                Senha <span className="text-destructive">*</span>
               </label>
               <Input
                 id="password"
@@ -116,11 +154,13 @@ const Register = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                className={password.length < 8 && errorMessage ? 'border-destructive' : ''}
               />
+              <p className="text-xs text-muted-foreground">Mínimo de 8 caracteres</p>
             </div>
             <div className="space-y-2">
               <label htmlFor="confirmPassword" className="text-sm font-medium">
-                Confirmar Senha
+                Confirmar Senha <span className="text-destructive">*</span>
               </label>
               <Input
                 id="confirmPassword"
@@ -129,6 +169,7 @@ const Register = () => {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
+                className={password !== confirmPassword && errorMessage ? 'border-destructive' : ''}
               />
             </div>
             <Button type="submit" className="w-full" disabled={loading}>

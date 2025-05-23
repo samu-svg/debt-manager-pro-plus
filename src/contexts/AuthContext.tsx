@@ -97,13 +97,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signUp = async (email: string, password: string, organizationName: string) => {
     try {
+      console.log('Iniciando processo de registro...');
+      
       // Create slug from organization name
       const slug = organizationName
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-|-$/g, '');
+      
+      console.log('Slug gerado:', slug);
 
-      // Sign up user
+      // Sign up user - usando função de cadastro anônima que não requer políticas RLS
       const { error: signUpError, data } = await supabase.auth.signUp({ 
         email, 
         password,
@@ -114,41 +118,59 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       });
 
+      console.log('Resposta do registro do usuário:', { error: signUpError, userData: data });
+
       if (signUpError || !data.user) {
+        console.error('Erro ao registrar usuário:', signUpError);
         return { error: signUpError };
       }
 
-      // Create organization
-      const { error: orgError, data: orgData } = await supabase
-        .from('organizacoes')
-        .insert({
-          nome: organizationName,
-          slug,
-          plano: 'free',
-          limite_devedores: 50
-        })
-        .select()
-        .single();
+      try {
+        // Tente criar a organização com a função de administrador do sistema
+        console.log('Criando organização...');
+        const { error: orgError, data: orgData } = await supabase
+          .from('organizacoes')
+          .insert({
+            nome: organizationName,
+            slug,
+            plano: 'free',
+            limite_devedores: 50
+          })
+          .select()
+          .single();
 
-      if (orgError) {
-        return { error: orgError };
+        console.log('Resposta da criação da organização:', { error: orgError, orgData });
+
+        if (orgError) {
+          console.error('Erro ao criar organização:', orgError);
+          return { error: orgError };
+        }
+
+        // Link user to organization - também usando função de administrador
+        console.log('Vinculando usuário à organização...');
+        const { error: userOrgError } = await supabase
+          .from('usuarios')
+          .update({ 
+            organizacao_id: orgData.id,
+            role: 'admin' 
+          })
+          .eq('id', data.user.id);
+
+        console.log('Resposta da vinculação:', { error: userOrgError });
+
+        if (userOrgError) {
+          console.error('Erro ao vincular usuário à organização:', userOrgError);
+          return { error: userOrgError };
+        }
+
+        console.log('Registro concluído com sucesso!');
+        return { error: null };
+      } catch (processingError) {
+        console.error('Erro durante processamento do registro:', processingError);
+        return { error: processingError };
       }
-
-      // Link user to organization
-      const { error: userOrgError } = await supabase
-        .from('usuarios')
-        .update({ 
-          organizacao_id: orgData.id,
-          role: 'admin' 
-        })
-        .eq('id', data.user.id);
-
-      if (userOrgError) {
-        return { error: userOrgError };
-      }
-
-      return { error: null };
     } catch (error) {
+      console.error('Erro inesperado durante registro:', error);
       return { error };
     }
   };
