@@ -19,7 +19,7 @@ type AuthContextType = {
   loading: boolean;
   organization: Organization | null;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
-  signUp: (email: string, password: string) => Promise<{ error: Error | null; data: { user: User | null } | null }>;
+  signUp: (email: string, password: string, organizationName?: string) => Promise<{ error: Error | null; data: { user: User | null } | null }>;
   signOut: () => Promise<void>;
   createOrganization: (name: string) => Promise<{ error: Error | null }>;
   loadOrganization: () => Promise<Organization | null>;
@@ -77,18 +77,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   // Criar uma organização padrão para o usuário
-  const createDefaultOrganization = async (userId: string) => {
+  const createDefaultOrganization = async (userId: string, orgName?: string) => {
     console.log('Criando organização padrão para o usuário:', userId);
     try {
       // Gerar um slug único baseado no timestamp
       const timestamp = new Date().getTime();
-      const slug = `org-${timestamp}`;
+      const slug = orgName 
+        ? `${orgName.toLowerCase().replace(/[^a-z0-9]/g, '-')}-${timestamp}`
+        : `org-${timestamp}`;
       
       // Inserir a organização
       const { data: orgData, error: orgError } = await supabase
         .from('organizacoes')
         .insert({
-          nome: 'Minha Organização',
+          nome: orgName || 'Minha Organização',
           slug,
           plano: 'free',
           limite_devedores: 50
@@ -202,7 +204,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   // Registro
-  const signUp = async (email: string, password: string) => {
+  const signUp = async (email: string, password: string, organizationName?: string) => {
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -210,6 +212,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       });
 
       if (error) throw error;
+      
+      // Se o usuário foi criado com sucesso e tem uma organização para criar
+      if (data.user && organizationName) {
+        // Criar a organização com o nome fornecido
+        await createDefaultOrganization(data.user.id, organizationName);
+      }
       
       // Usuário criado com sucesso
       toast({
