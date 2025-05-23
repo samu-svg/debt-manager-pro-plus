@@ -57,19 +57,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const loadUserOrganization = async (userId: string) => {
     try {
+      console.log('Carregando organização para o usuário:', userId);
       const { data, error } = await supabase
         .from('usuarios')
         .select('organizacao_id, organizacoes:organizacao_id(*)')
         .eq('id', userId)
         .single();
       
+      console.log('Dados recebidos do Supabase:', data);
+      
       if (error) throw error;
       
       if (data?.organizacoes) {
-        setOrganization(data.organizacoes as unknown as Organization);
+        // Verificar se organizacoes é um array e pegar o primeiro elemento se necessário
+        const org = Array.isArray(data.organizacoes) 
+          ? data.organizacoes[0] 
+          : data.organizacoes;
+        
+        console.log('Objeto de organização formatado:', org);
+        setOrganization(org as unknown as Organization);
+      } else {
+        console.log('Nenhuma organização encontrada para o usuário');
       }
     } catch (error) {
-      console.error('Error loading organization data:', error);
+      console.error('Erro ao carregar dados da organização:', error);
     } finally {
       setLoading(false);
     }
