@@ -7,8 +7,8 @@ import {
   listarDividas,
   listarDividasPorCliente,
   buscarDividaPorId,
-  criarDivida,
-  atualizarDivida,
+  criarDivida as criarDividaService,
+  atualizarDivida as atualizarDividaService,
   excluirDivida,
   DividaInsert,
   DividaUpdate
@@ -83,7 +83,7 @@ export const useDividas = (clienteId?: string) => {
         mes_inicio_juros: divida.mesInicioJuros
       };
 
-      const novaDivida = await criarDivida(dividaInsert);
+      const novaDivida = await criarDividaService(dividaInsert);
       setDividas(prev => [novaDivida, ...prev]);
       
       toast({
@@ -116,7 +116,7 @@ export const useDividas = (clienteId?: string) => {
       if (updates.taxaJuros !== undefined) dividaUpdate.taxa_juros = updates.taxaJuros;
       if (updates.mesInicioJuros !== undefined) dividaUpdate.mes_inicio_juros = updates.mesInicioJuros;
 
-      const dividaAtualizada = await atualizarDivida(id, dividaUpdate);
+      const dividaAtualizada = await atualizarDividaService(id, dividaUpdate);
       setDividas(prev => prev.map(d => d.id === id ? dividaAtualizada : d));
       
       toast({

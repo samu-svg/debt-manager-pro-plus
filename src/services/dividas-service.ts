@@ -2,6 +2,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { Divida, StatusPagamento, MesInicioJuros } from '@/types';
 
+// Interface for inserting a new record
 export interface DividaInsert {
   cliente_id: string;
   valor: number;
@@ -13,6 +14,7 @@ export interface DividaInsert {
   mes_inicio_juros?: MesInicioJuros;
 }
 
+// Interface for updating an existing record
 export interface DividaUpdate {
   valor?: number;
   data_compra?: string;

@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { useDividas } from '@/hooks/use-dividas';
+import { useDividasSupabase } from '@/hooks/use-dividas-supabase';
 import { useClientesSupabase } from '@/hooks/use-clientes-supabase';
 import DividaForm from '@/components/dividas/DividaForm';
 import { useWhatsApp } from '@/hooks/use-whatsapp';
@@ -12,9 +12,10 @@ import { useDividaFiltros } from '@/hooks/use-divida-filtros';
 import DividasHeader from '@/components/dividas/DividasHeader';
 import TabAtrasadas from '@/components/dividas/TabAtrasadas';
 import TabPadrao from '@/components/dividas/TabPadrao';
+import { Cliente } from '@/types';
 
 const Dividas = () => {
-  const { dividas, marcarComoPaga, criarDivida } = useDividas();
+  const { dividas, marcarComoPaga, adicionarDivida } = useDividasSupabase();
   const { clientes, getCliente } = useClientesSupabase();
   const { mensagensEnviadas, envioAutomatico, alternarEnvioAutomatico, enviarCobranca } = useWhatsApp();
   
@@ -64,7 +65,7 @@ const Dividas = () => {
   
   // Criar nova dívida
   const handleCriarDivida = async (data: any) => {
-    const resultado = await criarDivida(data);
+    const resultado = await adicionarDivida(data);
     if (resultado) {
       setIsDividaDialogOpen(false);
     }
@@ -95,11 +96,12 @@ const Dividas = () => {
     return dividas.find(divida => divida.id === id) || null;
   };
   
-  const getClienteFromDividaId = (dividaId: string | null) => {
+  const getClienteFromDividaId = (dividaId: string | null): Cliente | null => {
     if (!dividaId) return null;
     const divida = getDivida(dividaId);
     if (!divida) return null;
-    return getCliente(divida.clienteId);
+    const cliente = getCliente(divida.clienteId);
+    return cliente || null;
   };
   
   return (
