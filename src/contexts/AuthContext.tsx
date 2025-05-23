@@ -1,137 +1,95 @@
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { Session, User } from '@supabase/supabase-js';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import type { Organization } from '@/lib/supabase';
+import { useToast } from '@/hooks/use-toast';
 
-interface AuthContextType {
+export type Organization = {
+  id: string;
+  nome: string;
+  slug: string;
+  plano: string;
+  limite_devedores: number;
+  created_at: string;
+};
+
+type AuthContextType = {
   user: User | null;
   session: Session | null;
-  organization: Organization | null;
-  signIn: (email: string, password: string) => Promise<{ error: any | null }>;
-  signUp: (email: string, password: string, organizationName: string) => Promise<{ error: any | null }>;
-  signOut: () => Promise<void>;
   loading: boolean;
-  createOrganization: (name: string) => Promise<{ error: any | null }>;
-}
+  organization: Organization | null;
+  signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signUp: (email: string, password: string) => Promise<{ error: Error | null; data: { user: User | null } | null }>;
+  signOut: () => Promise<void>;
+  createOrganization: (name: string) => Promise<{ error: Error | null }>;
+  loadOrganization: () => Promise<Organization | null>;
+};
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
   const [organization, setOrganization] = useState<Organization | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
-  useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        loadUserOrganization(session.user.id);
-      } else {
-        setLoading(false);
-      }
-    });
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        // Use setTimeout to prevent potential recursive auth state issues
-        setTimeout(() => {
-          loadUserOrganization(session.user.id);
-        }, 0);
-      } else {
-        setLoading(false);
-        setOrganization(null);
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
-
+  // Verificar se o usuário tem uma organização
   const loadUserOrganization = async (userId: string) => {
+    console.log('Carregando organização para o usuário:', userId);
     try {
-      console.log('Carregando organização para o usuário:', userId);
-      
-      // Primeiro, verificar se o usuário existe na tabela usuarios
+      // Verificar se o usuário já existe na tabela usuarios
       const { data: userData, error: userError } = await supabase
         .from('usuarios')
-        .select('organizacao_id')
+        .select('organizacao_id, organizacoes(*)')
         .eq('id', userId)
-        .single();
-      
+        .maybeSingle();
+
       if (userError) {
-        console.log('Usuário não encontrado na tabela usuarios, criando entrada...');
-        // Se o usuário não existe, criar entrada
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          await supabase
-            .from('usuarios')
-            .insert({
-              id: userId,
-              email: user.email || '',
-              role: 'admin'
-            });
-        }
-        
-        // Criar organização padrão
-        await createDefaultOrganization(userId);
-        return;
+        console.error('Erro ao carregar dados do usuário:', userError);
+        return null;
       }
 
-      if (userData?.organizacao_id) {
-        // Buscar dados da organização
-        const { data: orgData, error: orgError } = await supabase
-          .from('organizacoes')
-          .select('*')
-          .eq('id', userData.organizacao_id)
-          .single();
+      // Se o usuário não existe na tabela, criar um novo registro
+      if (!userData) {
+        console.info('Usuário não encontrado na tabela usuarios, criando entrada...');
         
-        if (orgError) {
-          console.error('Erro ao buscar organização:', orgError);
-          await createDefaultOrganization(userId);
-        } else {
-          console.log('Organização encontrada:', orgData);
-          setOrganization(orgData as unknown as Organization);
-        }
+        // Tentar criar uma organização padrão para o usuário
+        const org = await createDefaultOrganization(userId);
+        return org;
+      }
+
+      // Se o usuário já tem uma organização
+      if (userData.organizacao_id && userData.organizacoes) {
+        console.log('Organização encontrada:', userData.organizacoes);
+        setOrganization(userData.organizacoes as Organization);
+        return userData.organizacoes as Organization;
       } else {
-        console.log('Usuário sem organização, criando padrão...');
-        await createDefaultOrganization(userId);
+        // Se o usuário não tem uma organização, criar uma
+        console.log('Usuário não possui organização, criando uma padrão...');
+        const org = await createDefaultOrganization(userId);
+        return org;
       }
     } catch (error) {
-      console.error('Erro ao carregar dados da organização:', error);
-      await createDefaultOrganization(userId);
-    } finally {
-      setLoading(false);
+      console.error('Erro ao carregar organização:', error);
+      return null;
     }
   };
 
+  // Criar uma organização padrão para o usuário
   const createDefaultOrganization = async (userId: string) => {
+    console.log('Criando organização padrão para o usuário:', userId);
     try {
-      console.log('Criando organização padrão para o usuário:', userId);
+      // Gerar um slug único baseado no timestamp
+      const timestamp = new Date().getTime();
+      const slug = `org-${timestamp}`;
       
-      // Buscar email do usuário
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      const organizationName = user?.email ? `Organização de ${user.email.split('@')[0]}` : 'Minha Organização';
-      const slug = organizationName
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-|-$/g, '');
-
-      // Criar a organização
+      // Inserir a organização
       const { data: orgData, error: orgError } = await supabase
         .from('organizacoes')
         .insert({
-          nome: organizationName,
-          slug: slug + '-' + Date.now(),
+          nome: 'Minha Organização',
+          slug,
           plano: 'free',
           limite_devedores: 50
         })
@@ -140,48 +98,49 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (orgError) {
         console.error('Erro ao criar organização padrão:', orgError);
-        return;
+        throw orgError;
       }
 
-      // Vincular usuário à organização
-      const { error: userOrgError } = await supabase
+      // Vincular a organização ao usuário
+      const { error: updateError } = await supabase
         .from('usuarios')
-        .upsert({ 
+        .upsert({
           id: userId,
-          email: user?.email || '',
           organizacao_id: orgData.id,
-          role: 'admin' 
+          email: user?.email || 'sem-email'
         });
 
-      if (userOrgError) {
-        console.error('Erro ao vincular usuário à organização:', userOrgError);
-        return;
+      if (updateError) {
+        console.error('Erro ao vincular usuário à organização:', updateError);
+        throw updateError;
       }
 
-      console.log('Organização padrão criada com sucesso:', orgData);
-      setOrganization(orgData as unknown as Organization);
+      console.log('Organização criada e vinculada com sucesso:', orgData);
+      setOrganization(orgData as Organization);
+      return orgData as Organization;
     } catch (error) {
       console.error('Erro ao criar organização padrão:', error);
+      return null;
     }
   };
 
+  // Criar uma organização personalizada
   const createOrganization = async (name: string) => {
+    if (!user) {
+      return { error: new Error('Usuário não autenticado') };
+    }
+
     try {
-      if (!user) {
-        return { error: 'Usuário não autenticado' };
-      }
-
-      const slug = name
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-|-$/g, '');
-
-      // Criar a organização
+      // Gerar um slug único baseado no nome e timestamp
+      const timestamp = new Date().getTime();
+      const slug = `${name.toLowerCase().replace(/[^a-z0-9]/g, '-')}-${timestamp}`;
+      
+      // Inserir a organização
       const { data: orgData, error: orgError } = await supabase
         .from('organizacoes')
         .insert({
           nome: name,
-          slug: slug + '-' + Date.now(),
+          slug,
           plano: 'free',
           limite_devedores: 50
         })
@@ -189,143 +148,160 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .single();
 
       if (orgError) {
+        console.error('Erro ao criar organização:', orgError);
         return { error: orgError };
       }
 
-      // Vincular usuário à organização
-      const { error: userOrgError } = await supabase
+      // Vincular a organização ao usuário
+      const { error: updateError } = await supabase
         .from('usuarios')
-        .upsert({ 
-          id: user.id,
-          email: user.email || '',
-          organizacao_id: orgData.id,
-          role: 'admin' 
-        });
+        .update({ organizacao_id: orgData.id })
+        .eq('id', user.id);
 
-      if (userOrgError) {
-        return { error: userOrgError };
+      if (updateError) {
+        console.error('Erro ao vincular usuário à organização:', updateError);
+        return { error: updateError };
       }
 
-      setOrganization(orgData as unknown as Organization);
+      // Atualizar o estado
+      setOrganization(orgData as Organization);
       return { error: null };
     } catch (error) {
-      return { error };
+      console.error('Erro ao criar organização:', error);
+      return { error: error as Error };
     }
   };
 
+  // Carregar dados da organização
+  const loadOrganization = async () => {
+    if (!user) return null;
+    
+    const org = await loadUserOrganization(user.id);
+    return org;
+  };
+
+  // Login
   const signIn = async (email: string, password: string) => {
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      return { error };
-    } catch (error) {
-      return { error };
-    }
-  };
-
-  const signUp = async (email: string, password: string, organizationName: string) => {
-    try {
-      console.log('Iniciando processo de registro...');
-      
-      // Create slug from organization name
-      const slug = organizationName
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-|-$/g, '');
-      
-      console.log('Slug gerado:', slug);
-
-      // Sign up user - usando função de cadastro anônima que não requer políticas RLS
-      const { error: signUpError, data } = await supabase.auth.signUp({ 
-        email, 
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
         password,
-        options: {
-          data: {
-            organization_name: organizationName
-          }
-        }
       });
 
-      console.log('Resposta do registro do usuário:', { error: signUpError, userData: data });
-
-      if (signUpError || !data.user) {
-        console.error('Erro ao registrar usuário:', signUpError);
-        return { error: signUpError };
-      }
-
-      try {
-        // Tente criar a organização com a função de administrador do sistema
-        console.log('Criando organização...');
-        const { error: orgError, data: orgData } = await supabase
-          .from('organizacoes')
-          .insert({
-            nome: organizationName,
-            slug,
-            plano: 'free',
-            limite_devedores: 50
-          })
-          .select()
-          .single();
-
-        console.log('Resposta da criação da organização:', { error: orgError, orgData });
-
-        if (orgError) {
-          console.error('Erro ao criar organização:', orgError);
-          return { error: orgError };
-        }
-
-        // Link user to organization - também usando função de administrador
-        console.log('Vinculando usuário à organização...');
-        const { error: userOrgError } = await supabase
-          .from('usuarios')
-          .update({ 
-            organizacao_id: orgData.id,
-            role: 'admin' 
-          })
-          .eq('id', data.user.id);
-
-        console.log('Resposta da vinculação:', { error: userOrgError });
-
-        if (userOrgError) {
-          console.error('Erro ao vincular usuário à organização:', userOrgError);
-          return { error: userOrgError };
-        }
-
-        console.log('Registro concluído com sucesso!');
-        return { error: null };
-      } catch (processingError) {
-        console.error('Erro durante processamento do registro:', processingError);
-        return { error: processingError };
-      }
+      if (error) throw error;
+      return { error: null };
     } catch (error) {
-      console.error('Erro inesperado durante registro:', error);
-      return { error };
+      console.error('Erro no login:', error);
+      toast({
+        title: 'Erro no login',
+        description: (error as Error).message,
+        variant: 'destructive',
+      });
+      return { error: error as Error };
     }
   };
 
-  const signOut = async () => {
-    setLoading(true);
-    await supabase.auth.signOut();
-    setLoading(false);
+  // Registro
+  const signUp = async (email: string, password: string) => {
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+      });
+
+      if (error) throw error;
+      
+      // Usuário criado com sucesso
+      toast({
+        title: 'Conta criada com sucesso',
+        description: 'Verifique seu email para confirmar a conta.',
+      });
+      
+      return { error: null, data };
+    } catch (error) {
+      console.error('Erro no registro:', error);
+      toast({
+        title: 'Erro no registro',
+        description: (error as Error).message,
+        variant: 'destructive',
+      });
+      return { error: error as Error, data: null };
+    }
   };
+
+  // Logout
+  const signOut = async () => {
+    try {
+      await supabase.auth.signOut();
+      setUser(null);
+      setSession(null);
+      setOrganization(null);
+    } catch (error) {
+      console.error('Erro ao fazer logout:', error);
+    }
+  };
+
+  // Efetuar verificação de autenticação na inicialização
+  useEffect(() => {
+    const initAuth = async () => {
+      setLoading(true);
+      try {
+        // Primeiro configurar listener para mudanças na autenticação
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+          (_event, newSession) => {
+            setSession(newSession);
+            setUser(newSession?.user ?? null);
+            
+            if (newSession?.user) {
+              // Usamos setTimeout para evitar ciclo de dependência
+              setTimeout(() => {
+                loadUserOrganization(newSession.user.id);
+              }, 0);
+            }
+          }
+        );
+
+        // Depois checar sessão atual
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        setSession(currentSession);
+        setUser(currentSession?.user ?? null);
+        
+        if (currentSession?.user) {
+          await loadUserOrganization(currentSession.user.id);
+        }
+        
+        return () => {
+          subscription.unsubscribe();
+        };
+      } catch (error) {
+        console.error('Erro ao inicializar autenticação:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initAuth();
+  }, []);
 
   const value = {
     user,
     session,
+    loading,
     organization,
     signIn,
     signUp,
     signOut,
-    loading,
-    createOrganization
+    createOrganization,
+    loadOrganization
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
+};
 
-export function useAuth() {
+export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error('useAuth deve ser usado dentro de um AuthProvider');
   }
   return context;
-}
+};

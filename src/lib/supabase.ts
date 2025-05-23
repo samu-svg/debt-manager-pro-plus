@@ -43,9 +43,14 @@ export const getCurrentUserOrganization = async () => {
     .from('usuarios')
     .select('organizacao_id, organizacoes(*)')
     .eq('id', user.id)
-    .single();
+    .maybeSingle();
   
   if (error) throw error;
+  
+  if (!data || !data.organizacoes) {
+    return null;
+  }
+  
   return data.organizacoes;
 };
 
