@@ -1,7 +1,7 @@
-
 import { useState, useEffect } from 'react';
 import { Divida, StatusPagamento } from '@/types';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import { determinarStatusDivida } from '@/lib/utils';
 import {
   listarDividas,
@@ -19,6 +19,7 @@ export const useDividas = (clienteId?: string) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
+  const { organization } = useAuth();
 
   // Carregar todas as dívidas ou dívidas de um cliente específico
   const loadDividas = async () => {
@@ -72,6 +73,15 @@ export const useDividas = (clienteId?: string) => {
   // Adicionar nova dívida
   const criarDivida = async (divida: Omit<Divida, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
+      if (!organization?.id) {
+        toast({
+          title: 'Erro',
+          description: 'Organização não encontrada',
+          variant: 'destructive',
+        });
+        return null;
+      }
+
       const dividaInsert: DividaInsert = {
         cliente_id: divida.clienteId,
         valor: divida.valor,
@@ -80,7 +90,8 @@ export const useDividas = (clienteId?: string) => {
         status: divida.status,
         descricao: divida.descricao,
         taxa_juros: divida.taxaJuros,
-        mes_inicio_juros: divida.mesInicioJuros
+        mes_inicio_juros: divida.mesInicioJuros,
+        organizacao_id: organization.id
       };
 
       const novaDivida = await criarDividaService(dividaInsert);

@@ -1,7 +1,7 @@
-
 import { useState, useEffect } from 'react';
 import { Divida, StatusPagamento, MesInicioJuros } from '@/types';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import { determinarStatusDivida } from '@/lib/utils';
 import {
   listarDividas,
@@ -19,6 +19,7 @@ export const useDividasSupabase = (clienteId?: string) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
+  const { organization } = useAuth();
 
   // Carregar dívidas
   const carregarDividas = async () => {
@@ -72,6 +73,15 @@ export const useDividasSupabase = (clienteId?: string) => {
   // Criar nova dívida
   const adicionarDivida = async (dadosDivida: Omit<Divida, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
+      if (!organization?.id) {
+        toast({
+          title: 'Erro',
+          description: 'Organização não encontrada',
+          variant: 'destructive',
+        });
+        return null;
+      }
+
       const dividaInsert: DividaInsert = {
         cliente_id: dadosDivida.clienteId,
         valor: dadosDivida.valor,
@@ -80,7 +90,8 @@ export const useDividasSupabase = (clienteId?: string) => {
         status: dadosDivida.status,
         descricao: dadosDivida.descricao,
         taxa_juros: dadosDivida.taxaJuros,
-        mes_inicio_juros: dadosDivida.mesInicioJuros
+        mes_inicio_juros: dadosDivida.mesInicioJuros,
+        organizacao_id: organization.id
       };
 
       const novaDivida = await criarDivida(dividaInsert);

@@ -12,7 +12,7 @@ export interface DividaInsert {
   descricao?: string;
   taxa_juros?: number;
   mes_inicio_juros?: MesInicioJuros;
-  // organizacao_id será definido automaticamente pelo trigger
+  organizacao_id: string; // Agora obrigatório
 }
 
 // Interface for updating an existing record
@@ -115,8 +115,8 @@ export async function criarDivida(divida: DividaInsert) {
       status: divida.status,
       descricao: divida.descricao,
       taxa_juros: divida.taxa_juros || 3,
-      mes_inicio_juros: divida.mes_inicio_juros || '2º mês'
-      // organizacao_id será definido automaticamente pelo trigger
+      mes_inicio_juros: divida.mes_inicio_juros || '2º mês',
+      organizacao_id: divida.organizacao_id
     })
     .select()
     .single();
