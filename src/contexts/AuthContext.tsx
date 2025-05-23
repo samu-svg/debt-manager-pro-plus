@@ -1,7 +1,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/integrations/supabase/client';
 import type { Organization } from '@/lib/supabase';
 
 interface AuthContextType {
@@ -40,7 +40,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(session?.user ?? null);
       
       if (session?.user) {
-        loadUserOrganization(session.user.id);
+        // Use setTimeout to prevent potential recursive auth state issues
+        setTimeout(() => {
+          loadUserOrganization(session.user.id);
+        }, 0);
       } else {
         setLoading(false);
         setOrganization(null);
@@ -63,7 +66,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error) throw error;
       
       if (data?.organizacoes) {
-        // Fix: Cast data.organizacoes to Organization instead of assigning directly
         setOrganization(data.organizacoes as unknown as Organization);
       }
     } catch (error) {

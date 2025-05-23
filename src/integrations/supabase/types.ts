@@ -9,7 +9,65 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      organizacoes: {
+        Row: {
+          created_at: string | null
+          id: string
+          limite_devedores: number
+          nome: string
+          plano: string
+          slug: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          limite_devedores?: number
+          nome: string
+          plano?: string
+          slug: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          limite_devedores?: number
+          nome?: string
+          plano?: string
+          slug?: string
+        }
+        Relationships: []
+      }
+      usuarios: {
+        Row: {
+          created_at: string | null
+          email: string
+          id: string
+          organizacao_id: string | null
+          role: string
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          id: string
+          organizacao_id?: string | null
+          role?: string
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          id?: string
+          organizacao_id?: string | null
+          role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "usuarios_organizacao_id_fkey"
+            columns: ["organizacao_id"]
+            isOneToOne: false
+            referencedRelation: "organizacoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

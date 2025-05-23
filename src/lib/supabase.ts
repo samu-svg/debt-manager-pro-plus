@@ -3,16 +3,23 @@ import { createClient } from '@supabase/supabase-js';
 import type { Database } from '@/types/supabase';
 
 // Supabase client configuration
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabaseUrl = "https://xcextmkpjsubhipxdvmu.supabase.co";
+const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhjZXh0bWtwanN1YmhpcHhkdm11Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgwMDg5MDEsImV4cCI6MjA2MzU4NDkwMX0.G9caj75RPKnqS5NhQef6o1CoK6PxiaQWjrjmA9N-A0Y";
 
 if (!supabaseUrl || !supabaseAnonKey) {
   console.error('Missing Supabase environment variables. Check your .env file.');
 }
 
 export const supabase = createClient<Database>(
-  supabaseUrl || '',
-  supabaseAnonKey || ''
+  supabaseUrl,
+  supabaseAnonKey,
+  {
+    auth: {
+      storage: localStorage,
+      persistSession: true,
+      autoRefreshToken: true,
+    }
+  }
 );
 
 // Helper functions for organization management
