@@ -62,8 +62,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       if (error) throw error;
       
-      if (data.organizacoes) {
-        setOrganization(data.organizacoes as Organization);
+      if (data?.organizacoes) {
+        // Fix: Cast data.organizacoes to Organization instead of assigning directly
+        setOrganization(data.organizacoes as unknown as Organization);
       }
     } catch (error) {
       console.error('Error loading organization data:', error);
