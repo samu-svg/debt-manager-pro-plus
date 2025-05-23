@@ -16,7 +16,7 @@ import { Cliente } from '@/types';
 
 const Dividas = () => {
   const { dividas, marcarComoPaga, adicionarDivida } = useDividasSupabase();
-  const { clientes, getCliente } = useClientesSupabase();
+  const { clientes } = useClientesSupabase();
   const { mensagensEnviadas, envioAutomatico, alternarEnvioAutomatico, enviarCobranca } = useWhatsApp();
   
   const [activeTab, setActiveTab] = useState('todas');
@@ -27,7 +27,12 @@ const Dividas = () => {
     dividaId: null
   });
   
-  // Obter cliente por ID
+  // Obter cliente por ID do array local
+  const getCliente = (clienteId: string): Cliente | null => {
+    return clientes.find(cliente => cliente.id === clienteId) || null;
+  };
+  
+  // Obter nome do cliente
   const getClienteNome = (clienteId: string) => {
     const cliente = getCliente(clienteId);
     return cliente ? cliente.nome : 'Cliente não encontrado';
@@ -100,8 +105,7 @@ const Dividas = () => {
     if (!dividaId) return null;
     const divida = getDivida(dividaId);
     if (!divida) return null;
-    const cliente = getCliente(divida.clienteId);
-    return cliente || null;
+    return getCliente(divida.clienteId);
   };
   
   return (
@@ -170,7 +174,7 @@ const Dividas = () => {
       </Tabs>
       
       {/* Modal para envio de cobrança */}
-      {cobrancaModal.dividaId && (
+      {cobrancaModal.dividaId && getClienteFromDividaId(cobrancaModal.dividaId) && getDivida(cobrancaModal.dividaId) && (
         <EnvioCobrancaModal
           isOpen={cobrancaModal.isOpen}
           onClose={() => setCobrancaModal({ isOpen: false, dividaId: null })}
@@ -181,7 +185,7 @@ const Dividas = () => {
       )}
       
       {/* Dialog para adicionar dívida */}
-      {clienteSelecionadoId && (
+      {clienteSelecionadoId && getCliente(clienteSelecionadoId) && (
         <Dialog open={isDividaDialogOpen} onOpenChange={setIsDividaDialogOpen}>
           <DialogContent>
             <DialogHeader>
