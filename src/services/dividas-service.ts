@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Divida, StatusPagamento, MesInicioJuros } from '@/types';
 
@@ -47,37 +46,58 @@ export function mapDividaFromDb(dbDivida: any): Divida {
 export async function listarDividas() {
   console.log('Buscando dívidas no Supabase...');
   
-  const { data, error } = await supabase
-    .from('dividas')
-    .select('*')
-    .order('created_at', { ascending: false });
+  try {
+    // Verificar se o usuário está autenticado
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      throw new Error('Usuário não autenticado');
+    }
 
-  if (error) {
-    console.error('Erro ao buscar dívidas:', error);
-    throw new Error(`Erro ao carregar dívidas: ${error.message}`);
+    const { data, error } = await supabase
+      .from('dividas')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Erro ao buscar dívidas:', error);
+      throw new Error(`Erro ao carregar dívidas: ${error.message}`);
+    }
+
+    console.log('Dívidas encontradas:', data?.length || 0);
+    return data?.map(mapDividaFromDb) || [];
+  } catch (error) {
+    console.error('Erro geral ao buscar dívidas:', error);
+    throw error;
   }
-
-  console.log('Dívidas encontradas:', data?.length || 0);
-  return data?.map(mapDividaFromDb) || [];
 }
 
 // Buscar dívidas por cliente
 export async function listarDividasPorCliente(clienteId: string) {
   console.log('Buscando dívidas para cliente:', clienteId);
   
-  const { data, error } = await supabase
-    .from('dividas')
-    .select('*')
-    .eq('cliente_id', clienteId)
-    .order('created_at', { ascending: false });
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      throw new Error('Usuário não autenticado');
+    }
 
-  if (error) {
-    console.error('Erro ao buscar dívidas do cliente:', error);
-    throw new Error(`Erro ao carregar dívidas do cliente: ${error.message}`);
+    const { data, error } = await supabase
+      .from('dividas')
+      .select('*')
+      .eq('cliente_id', clienteId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Erro ao buscar dívidas do cliente:', error);
+      throw new Error(`Erro ao carregar dívidas do cliente: ${error.message}`);
+    }
+
+    console.log('Dívidas do cliente encontradas:', data?.length || 0);
+    return data?.map(mapDividaFromDb) || [];
+  } catch (error) {
+    console.error('Erro geral ao buscar dívidas do cliente:', error);
+    throw error;
   }
-
-  console.log('Dívidas do cliente encontradas:', data?.length || 0);
-  return data?.map(mapDividaFromDb) || [];
 }
 
 // Buscar dívida por ID

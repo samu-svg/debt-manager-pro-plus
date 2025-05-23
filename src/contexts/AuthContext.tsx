@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -58,31 +59,55 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const loadUserOrganization = async (userId: string) => {
     try {
       console.log('Carregando organização para o usuário:', userId);
-      const { data, error } = await supabase
+      
+      // Primeiro, verificar se o usuário existe na tabela usuarios
+      const { data: userData, error: userError } = await supabase
         .from('usuarios')
-        .select('organizacao_id, organizacoes:organizacao_id(*)')
+        .select('organizacao_id')
         .eq('id', userId)
         .single();
       
-      console.log('Dados recebidos do Supabase:', data);
-      
-      if (error) throw error;
-      
-      if (data?.organizacoes) {
-        // Verificar se organizacoes é um array e pegar o primeiro elemento se necessário
-        const org = Array.isArray(data.organizacoes) 
-          ? data.organizacoes[0] 
-          : data.organizacoes;
+      if (userError) {
+        console.log('Usuário não encontrado na tabela usuarios, criando entrada...');
+        // Se o usuário não existe, criar entrada
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          await supabase
+            .from('usuarios')
+            .insert({
+              id: userId,
+              email: user.email || '',
+              role: 'admin'
+            });
+        }
         
-        console.log('Objeto de organização formatado:', org);
-        setOrganization(org as unknown as Organization);
+        // Criar organização padrão
+        await createDefaultOrganization(userId);
+        return;
+      }
+
+      if (userData?.organizacao_id) {
+        // Buscar dados da organização
+        const { data: orgData, error: orgError } = await supabase
+          .from('organizacoes')
+          .select('*')
+          .eq('id', userData.organizacao_id)
+          .single();
+        
+        if (orgError) {
+          console.error('Erro ao buscar organização:', orgError);
+          await createDefaultOrganization(userId);
+        } else {
+          console.log('Organização encontrada:', orgData);
+          setOrganization(orgData as unknown as Organization);
+        }
       } else {
-        console.log('Nenhuma organização encontrada para o usuário - criando organização padrão');
-        // Criar uma organização padrão automaticamente
+        console.log('Usuário sem organização, criando padrão...');
         await createDefaultOrganization(userId);
       }
     } catch (error) {
       console.error('Erro ao carregar dados da organização:', error);
+      await createDefaultOrganization(userId);
     } finally {
       setLoading(false);
     }
@@ -93,13 +118,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log('Criando organização padrão para o usuário:', userId);
       
       // Buscar email do usuário
-      const { data: userData } = await supabase
-        .from('usuarios')
-        .select('email')
-        .eq('id', userId)
-        .single();
+      const { data: { user } } = await supabase.auth.getUser();
       
-      const organizationName = userData?.email ? `Organização de ${userData.email.split('@')[0]}` : 'Minha Organização';
+      const organizationName = user?.email ? `Organização de ${user.email.split('@')[0]}` : 'Minha Organização';
       const slug = organizationName
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
@@ -110,7 +131,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .from('organizacoes')
         .insert({
           nome: organizationName,
-          slug: slug + '-' + Date.now(), // Adicionar timestamp para garantir unicidade
+          slug: slug + '-' + Date.now(),
           plano: 'free',
           limite_devedores: 50
         })
@@ -125,11 +146,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Vincular usuário à organização
       const { error: userOrgError } = await supabase
         .from('usuarios')
-        .update({ 
+        .upsert({ 
+          id: userId,
+          email: user?.email || '',
           organizacao_id: orgData.id,
           role: 'admin' 
-        })
-        .eq('id', userId);
+        });
 
       if (userOrgError) {
         console.error('Erro ao vincular usuário à organização:', userOrgError);
@@ -173,11 +195,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Vincular usuário à organização
       const { error: userOrgError } = await supabase
         .from('usuarios')
-        .update({ 
+        .upsert({ 
+          id: user.id,
+          email: user.email || '',
           organizacao_id: orgData.id,
           role: 'admin' 
-        })
-        .eq('id', user.id);
+        });
 
       if (userOrgError) {
         return { error: userOrgError };
