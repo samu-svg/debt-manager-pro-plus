@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -7,12 +6,15 @@ import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useClientesSupabase } from '@/hooks/use-clientes-supabase';
 import { useDividas } from '@/hooks/use-dividas';
+import { useAuth } from '@/contexts/AuthContext';
 import ClienteForm from '@/components/clientes/ClienteForm';
 import ClienteCard from '@/components/clientes/ClienteCard';
+import OrganizationSetup from '@/components/OrganizationSetup';
 import { Cliente } from '@/types';
 import { Search } from 'lucide-react';
 
 const Clientes = () => {
+  const { organization, loading: authLoading } = useAuth();
   const { clientes, criarCliente, buscarClientes, loading } = useClientesSupabase();
   const { dividas } = useDividas();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -20,6 +22,22 @@ const Clientes = () => {
   const [clientesFiltrados, setClientesFiltrados] = useState<Cliente[]>([]);
   const [filtroAplicado, setFiltroAplicado] = useState(false);
   const [buscando, setBuscando] = useState(false);
+
+  // Mostrar loading se ainda estamos carregando a autenticação
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Card className="p-8 text-center">
+          <p className="text-lg font-medium">Carregando...</p>
+        </Card>
+      </div>
+    );
+  }
+
+  // Mostrar setup de organização se o usuário não tiver uma
+  if (!organization) {
+    return <OrganizationSetup />;
+  }
 
   // Lidar com a criação de um novo cliente
   const handleCriarCliente = async (data: Omit<Cliente, 'id' | 'createdAt' | 'updatedAt'>) => {

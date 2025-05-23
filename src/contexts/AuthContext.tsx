@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -12,6 +11,7 @@ interface AuthContextType {
   signUp: (email: string, password: string, organizationName: string) => Promise<{ error: any | null }>;
   signOut: () => Promise<void>;
   loading: boolean;
+  createOrganization: (name: string) => Promise<{ error: any | null }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -77,12 +77,116 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.log('Objeto de organização formatado:', org);
         setOrganization(org as unknown as Organization);
       } else {
-        console.log('Nenhuma organização encontrada para o usuário');
+        console.log('Nenhuma organização encontrada para o usuário - criando organização padrão');
+        // Criar uma organização padrão automaticamente
+        await createDefaultOrganization(userId);
       }
     } catch (error) {
       console.error('Erro ao carregar dados da organização:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const createDefaultOrganization = async (userId: string) => {
+    try {
+      console.log('Criando organização padrão para o usuário:', userId);
+      
+      // Buscar email do usuário
+      const { data: userData } = await supabase
+        .from('usuarios')
+        .select('email')
+        .eq('id', userId)
+        .single();
+      
+      const organizationName = userData?.email ? `Organização de ${userData.email.split('@')[0]}` : 'Minha Organização';
+      const slug = organizationName
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '');
+
+      // Criar a organização
+      const { data: orgData, error: orgError } = await supabase
+        .from('organizacoes')
+        .insert({
+          nome: organizationName,
+          slug: slug + '-' + Date.now(), // Adicionar timestamp para garantir unicidade
+          plano: 'free',
+          limite_devedores: 50
+        })
+        .select()
+        .single();
+
+      if (orgError) {
+        console.error('Erro ao criar organização padrão:', orgError);
+        return;
+      }
+
+      // Vincular usuário à organização
+      const { error: userOrgError } = await supabase
+        .from('usuarios')
+        .update({ 
+          organizacao_id: orgData.id,
+          role: 'admin' 
+        })
+        .eq('id', userId);
+
+      if (userOrgError) {
+        console.error('Erro ao vincular usuário à organização:', userOrgError);
+        return;
+      }
+
+      console.log('Organização padrão criada com sucesso:', orgData);
+      setOrganization(orgData as unknown as Organization);
+    } catch (error) {
+      console.error('Erro ao criar organização padrão:', error);
+    }
+  };
+
+  const createOrganization = async (name: string) => {
+    try {
+      if (!user) {
+        return { error: 'Usuário não autenticado' };
+      }
+
+      const slug = name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '');
+
+      // Criar a organização
+      const { data: orgData, error: orgError } = await supabase
+        .from('organizacoes')
+        .insert({
+          nome: name,
+          slug: slug + '-' + Date.now(),
+          plano: 'free',
+          limite_devedores: 50
+        })
+        .select()
+        .single();
+
+      if (orgError) {
+        return { error: orgError };
+      }
+
+      // Vincular usuário à organização
+      const { error: userOrgError } = await supabase
+        .from('usuarios')
+        .update({ 
+          organizacao_id: orgData.id,
+          role: 'admin' 
+        })
+        .eq('id', user.id);
+
+      if (userOrgError) {
+        return { error: userOrgError };
+      }
+
+      setOrganization(orgData as unknown as Organization);
+      return { error: null };
+    } catch (error) {
+      return { error };
     }
   };
 
@@ -188,7 +292,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signIn,
     signUp,
     signOut,
-    loading
+    loading,
+    createOrganization
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
