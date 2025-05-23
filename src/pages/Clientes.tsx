@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { useClientes } from '@/hooks/use-clientes';
+import { useClientesSupabase } from '@/hooks/use-clientes-supabase';
 import { useDividas } from '@/hooks/use-dividas';
 import ClienteForm from '@/components/clientes/ClienteForm';
 import ClienteCard from '@/components/clientes/ClienteCard';
@@ -13,25 +13,33 @@ import { Cliente } from '@/types';
 import { Search } from 'lucide-react';
 
 const Clientes = () => {
-  const { clientes, criarCliente, buscarClientes } = useClientes();
+  const { clientes, criarCliente, buscarClientes, loading } = useClientesSupabase();
   const { dividas } = useDividas();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [busca, setBusca] = useState('');
   const [clientesFiltrados, setClientesFiltrados] = useState<Cliente[]>([]);
   const [filtroAplicado, setFiltroAplicado] = useState(false);
+  const [buscando, setBuscando] = useState(false);
 
   // Lidar com a criação de um novo cliente
-  const handleCriarCliente = (data: Omit<Cliente, 'id' | 'createdAt' | 'updatedAt'>) => {
-    criarCliente(data);
-    setIsDialogOpen(false);
+  const handleCriarCliente = async (data: Omit<Cliente, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const resultado = await criarCliente(data);
+    if (resultado) {
+      setIsDialogOpen(false);
+    }
   };
 
   // Buscar clientes
-  const handleBuscar = () => {
+  const handleBuscar = async () => {
     if (busca.trim()) {
-      const resultados = buscarClientes(busca);
-      setClientesFiltrados(resultados);
-      setFiltroAplicado(true);
+      setBuscando(true);
+      try {
+        const resultados = await buscarClientes(busca);
+        setClientesFiltrados(resultados);
+        setFiltroAplicado(true);
+      } finally {
+        setBuscando(false);
+      }
     } else {
       setClientesFiltrados([]);
       setFiltroAplicado(false);
@@ -72,20 +80,28 @@ const Clientes = () => {
             onKeyDown={(e) => e.key === 'Enter' && handleBuscar()}
           />
         </div>
-        <Button variant="outline" onClick={handleBuscar}>Buscar</Button>
+        <Button variant="outline" onClick={handleBuscar} disabled={buscando}>
+          {buscando ? 'Buscando...' : 'Buscar'}
+        </Button>
         {filtroAplicado && (
           <Button variant="ghost" onClick={handleResetBusca}>Limpar</Button>
         )}
       </div>
 
-      {filtroAplicado && clientesFiltrados.length === 0 && (
+      {loading && (
+        <Card className="p-8 text-center">
+          <p className="text-lg font-medium">Carregando clientes...</p>
+        </Card>
+      )}
+
+      {!loading && filtroAplicado && clientesFiltrados.length === 0 && (
         <Card className="p-8 text-center">
           <p className="text-lg font-medium">Nenhum cliente encontrado</p>
           <p className="text-muted-foreground">Tente usar termos diferentes para a busca</p>
         </Card>
       )}
 
-      {clientesParaExibir.length > 0 ? (
+      {!loading && clientesParaExibir.length > 0 ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {clientesParaExibir.map((cliente) => (
             <ClienteCard 
@@ -96,7 +112,7 @@ const Clientes = () => {
           ))}
         </div>
       ) : (
-        !filtroAplicado && (
+        !loading && !filtroAplicado && (
           <Card className="p-8 text-center">
             <p className="text-lg font-medium">Nenhum cliente cadastrado</p>
             <p className="text-muted-foreground mb-4">Cadastre seu primeiro cliente para começar</p>

@@ -1,5 +1,4 @@
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,7 +6,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { useClientes } from '@/hooks/use-clientes';
+import { useClientesSupabase } from '@/hooks/use-clientes-supabase';
 import { useDividas } from '@/hooks/use-dividas';
 import ClienteForm from '@/components/clientes/ClienteForm';
 import DividaForm from '@/components/dividas/DividaForm';
@@ -16,21 +15,55 @@ import WhatsAppForm from '@/components/whatsapp/WhatsAppForm';
 import { formatarCPF, formatarTelefone, formatarMoeda, formatarData } from '@/lib/utils';
 import { AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Cliente } from '@/types';
 
 const ClienteDetalhes = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { getCliente, atualizarCliente, removerCliente } = useClientes();
+  const { getCliente, atualizarCliente, removerCliente } = useClientesSupabase();
   const { dividas, criarDivida, marcarComoPaga, recarregarDividas } = useDividas(id);
   
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDividaDialogOpen, setIsDividaDialogOpen] = useState(false);
   const [isWhatsAppDialogOpen, setIsWhatsAppDialogOpen] = useState(false);
   const [dividaSelecionada, setDividaSelecionada] = useState<string | null>(null);
+  const [cliente, setCliente] = useState<Cliente | null>(null);
+  const [loading, setLoading] = useState(true);
   
   // Buscar cliente
-  const cliente = getCliente(id || '');
+  useEffect(() => {
+    const loadCliente = async () => {
+      if (id) {
+        setLoading(true);
+        try {
+          const clienteData = await getCliente(id);
+          console.log("Cliente carregado:", clienteData);
+          setCliente(clienteData);
+        } catch (error) {
+          console.error("Erro ao carregar cliente:", error);
+          toast({
+            title: 'Erro',
+            description: 'Não foi possível carregar os dados do cliente',
+            variant: 'destructive',
+          });
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+    
+    loadCliente();
+  }, [id]);
+  
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full p-8">
+        <h1 className="text-xl font-medium mb-2">Carregando...</h1>
+        <p className="text-muted-foreground">Aguarde enquanto carregamos os dados do cliente</p>
+      </div>
+    );
+  }
   
   if (!cliente) {
     return (
@@ -52,17 +85,24 @@ const ClienteDetalhes = () => {
   const temDividaAtrasada = dividasAtrasadas.length > 0;
   
   // Atualizar cliente
-  const handleAtualizarCliente = (data: Omit<typeof cliente, 'id' | 'createdAt' | 'updatedAt'>) => {
-    atualizarCliente(cliente.id, data);
-    setIsEditDialogOpen(false);
+  const handleAtualizarCliente = async (data: Omit<Cliente, 'id' | 'createdAt' | 'updatedAt'>) => {
+    console.log("Dados para atualização:", data);
+    const clienteAtualizado = await atualizarCliente(cliente.id, data);
+    if (clienteAtualizado) {
+      console.log("Cliente atualizado:", clienteAtualizado);
+      setCliente(clienteAtualizado);
+      setIsEditDialogOpen(false);
+    }
   };
   
   // Remover cliente
-  const handleRemoverCliente = () => {
+  const handleRemoverCliente = async () => {
     const confirmacao = window.confirm(`Tem certeza que deseja remover o cliente ${cliente.nome}? Esta ação não pode ser desfeita.`);
     if (confirmacao) {
-      removerCliente(cliente.id);
-      navigate('/clientes');
+      const removed = await removerCliente(cliente.id);
+      if (removed) {
+        navigate('/clientes');
+      }
     }
   };
   

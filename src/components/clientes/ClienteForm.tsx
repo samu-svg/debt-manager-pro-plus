@@ -29,7 +29,10 @@ const ClienteForm = ({ cliente, onSubmit, onCancel }: ClienteFormProps) => {
   // Formatar CPF ao digitar
   const formatarCPF = (value: string) => {
     const cpfLimpo = value.replace(/\D/g, '');
-    return cpfLimpo.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+    if (cpfLimpo.length <= 11) {
+      return cpfLimpo.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+    }
+    return value;
   };
 
   // Formatar telefone ao digitar
@@ -40,6 +43,8 @@ const ClienteForm = ({ cliente, onSubmit, onCancel }: ClienteFormProps) => {
     }
     return telefoneLimpo.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
   };
+
+  console.log("Cliente recebido no formulário:", cliente);
 
   // Inicialização do formulário
   const form = useForm<ClienteFormValues>({
@@ -53,17 +58,23 @@ const ClienteForm = ({ cliente, onSubmit, onCancel }: ClienteFormProps) => {
 
   // Função de submissão do formulário
   const handleSubmit = async (data: ClienteFormValues) => {
+    console.log("Dados do formulário antes do envio:", data);
     setIsSubmitting(true);
     try {
       // Formatar os dados antes de enviar
       const cpfFormatado = formatarCPF(data.cpf);
       const telefoneFormatado = formatarTelefone(data.telefone);
 
-      await onSubmit({
+      const dadosFormatados = {
         ...data,
         cpf: cpfFormatado,
         telefone: telefoneFormatado
-      });
+      };
+      
+      console.log("Dados formatados para envio:", dadosFormatados);
+      await onSubmit(dadosFormatados);
+    } catch (error) {
+      console.error("Erro ao enviar formulário:", error);
     } finally {
       setIsSubmitting(false);
     }
