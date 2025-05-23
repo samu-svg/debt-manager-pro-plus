@@ -37,7 +37,9 @@ export const useClientesSupabase = () => {
         return;
       }
 
-      const { data, error: supaError } = await supabase
+      // Usando o tipo 'any' temporariamente para evitar erros de TypeScript
+      // até que o Supabase regenere os tipos
+      const { data, error: supaError } = await (supabase as any)
         .from('clientes')
         .select('*')
         .eq('organizacao_id', organization.id);
@@ -67,7 +69,7 @@ export const useClientesSupabase = () => {
   // Carregar cliente por ID
   const getCliente = async (id: string) => {
     try {
-      const { data, error: supaError } = await supabase
+      const { data, error: supaError } = await (supabase as any)
         .from('clientes')
         .select('*')
         .eq('id', id)
@@ -108,7 +110,7 @@ export const useClientesSupabase = () => {
 
       console.log('Criando cliente:', novoClienteDB);
 
-      const { data, error: supaError } = await supabase
+      const { data, error: supaError } = await (supabase as any)
         .from('clientes')
         .insert(novoClienteDB)
         .select()
@@ -153,7 +155,7 @@ export const useClientesSupabase = () => {
         updated_at: new Date().toISOString()
       };
 
-      const { data, error: supaError } = await supabase
+      const { data, error: supaError } = await (supabase as any)
         .from('clientes')
         .update(clienteDB)
         .eq('id', id)
@@ -191,7 +193,7 @@ export const useClientesSupabase = () => {
   // Remover cliente
   const removerCliente = async (id: string) => {
     try {
-      const { error: supaError, data } = await supabase
+      const { error: supaError, data } = await (supabase as any)
         .from('clientes')
         .delete()
         .eq('id', id)
@@ -231,7 +233,8 @@ export const useClientesSupabase = () => {
       
       console.log('Buscando clientes por termo:', termoLowerCase, 'ou CPF:', cpfLimpo);
       
-      let query = supabase
+      // Usando o tipo 'any' temporariamente para evitar erros de TypeScript
+      let query = (supabase as any)
         .from('clientes')
         .select('*')
         .eq('organizacao_id', organization.id);
