@@ -2,8 +2,9 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { CheckCircle2, MessageCircle, XCircle, Loader2 } from "lucide-react";
+import { CheckCircle2, MessageCircle, XCircle, Loader2, ExternalLink } from "lucide-react";
 import { useEffect, useState } from "react";
+import { whatsappBusinessApi } from "@/services/whatsappBusinessApi";
 
 interface StatusConexaoProps {
   status: 'conectado' | 'desconectado' | 'verificando';
@@ -12,14 +13,22 @@ interface StatusConexaoProps {
 
 const StatusConexao = ({ status, onTestarConexao }: StatusConexaoProps) => {
   const [isEvolutionApi, setIsEvolutionApi] = useState(false);
+  const [isBusinessApi, setIsBusinessApi] = useState(false);
   const [evolutionManagerUrl, setEvolutionManagerUrl] = useState('');
+  const [businessApiConfigured, setBusinessApiConfigured] = useState(false);
   
   useEffect(() => {
-    const apiUrl = import.meta.env.VITE_WHATSAPP_API_URL;
-    if (apiUrl && !apiUrl.includes('api.whatsapp.com')) {
+    // Check if Evolution API is configured
+    const evolutionApiUrl = import.meta.env.VITE_WHATSAPP_API_URL;
+    if (evolutionApiUrl && !evolutionApiUrl.includes('api.whatsapp.com') && !evolutionApiUrl.includes('graph.facebook.com')) {
       setIsEvolutionApi(true);
-      setEvolutionManagerUrl(`${apiUrl}/manager`);
+      setEvolutionManagerUrl(`${evolutionApiUrl}/manager`);
     }
+    
+    // Check if WhatsApp Business API is configured
+    const businessApiConfigured = whatsappBusinessApi.isConfigured();
+    setIsBusinessApi(businessApiConfigured);
+    setBusinessApiConfigured(businessApiConfigured);
   }, []);
 
   const handleTestarConexao = async () => {
@@ -60,6 +69,17 @@ const StatusConexao = ({ status, onTestarConexao }: StatusConexaoProps) => {
                 Gerenciador Evolution API
               </a>
             )}
+            
+            {isBusinessApi && (
+              <a 
+                href="https://business.facebook.com/settings/whatsapp-business-accounts"
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="ml-2 text-xs text-blue-600 hover:underline"
+              >
+                WhatsApp Business Manager
+              </a>
+            )}
           </div>
           
           <div className="flex gap-2">
@@ -69,7 +89,19 @@ const StatusConexao = ({ status, onTestarConexao }: StatusConexaoProps) => {
                 size="sm"
                 onClick={() => window.open(evolutionManagerUrl, '_blank')}
               >
+                <ExternalLink className="h-4 w-4 mr-2" />
                 Abrir Gerenciador
+              </Button>
+            )}
+            
+            {isBusinessApi && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => window.open("https://business.facebook.com/settings/whatsapp-business-accounts", '_blank')}
+              >
+                <ExternalLink className="h-4 w-4 mr-2" />
+                Meta Business
               </Button>
             )}
             
@@ -81,6 +113,25 @@ const StatusConexao = ({ status, onTestarConexao }: StatusConexaoProps) => {
             >
               Testar Conexão
             </Button>
+          </div>
+        </div>
+        
+        {/* API Information */}
+        <div className="mt-3 pt-3 border-t border-gray-100 text-sm text-gray-600">
+          <div className="flex flex-wrap gap-x-6 gap-y-1">
+            <div>
+              <span className="font-medium">Tipo API:</span>{' '}
+              {isBusinessApi 
+                ? 'WhatsApp Business Cloud API (Meta)' 
+                : isEvolutionApi 
+                ? 'Evolution API' 
+                : 'Não configurada'}
+            </div>
+            {businessApiConfigured && (
+              <div>
+                <span className="font-medium">Status:</span> Verificado
+              </div>
+            )}
           </div>
         </div>
       </CardContent>
