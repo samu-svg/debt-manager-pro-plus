@@ -12,6 +12,7 @@ export interface DividaInsert {
   descricao?: string;
   taxa_juros?: number;
   mes_inicio_juros?: MesInicioJuros;
+  // organizacao_id será definido automaticamente pelo trigger
 }
 
 // Interface for updating an existing record
@@ -42,7 +43,7 @@ export function mapDividaFromDb(dbDivida: any): Divida {
   };
 }
 
-// Listar todas as dívidas da organização
+// Listar todas as dívidas da organização do usuário
 export async function listarDividas() {
   console.log('Buscando dívidas no Supabase...');
   
@@ -115,6 +116,7 @@ export async function criarDivida(divida: DividaInsert) {
       descricao: divida.descricao,
       taxa_juros: divida.taxa_juros || 3,
       mes_inicio_juros: divida.mes_inicio_juros || '2º mês'
+      // organizacao_id será definido automaticamente pelo trigger
     })
     .select()
     .single();

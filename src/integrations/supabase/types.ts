@@ -56,6 +56,7 @@ export type Database = {
           descricao: string | null
           id: string
           mes_inicio_juros: string | null
+          organizacao_id: string
           status: string
           taxa_juros: number | null
           updated_at: string | null
@@ -69,6 +70,7 @@ export type Database = {
           descricao?: string | null
           id?: string
           mes_inicio_juros?: string | null
+          organizacao_id: string
           status: string
           taxa_juros?: number | null
           updated_at?: string | null
@@ -82,6 +84,7 @@ export type Database = {
           descricao?: string | null
           id?: string
           mes_inicio_juros?: string | null
+          organizacao_id?: string
           status?: string
           taxa_juros?: number | null
           updated_at?: string | null
@@ -93,6 +96,13 @@ export type Database = {
             columns: ["cliente_id"]
             isOneToOne: false
             referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dividas_organizacao_id_fkey"
+            columns: ["organizacao_id"]
+            isOneToOne: false
+            referencedRelation: "organizacoes"
             referencedColumns: ["id"]
           },
         ]
@@ -161,7 +171,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_organization_id: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never

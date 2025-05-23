@@ -64,34 +64,28 @@ export interface Database {
           id: string
           organizacao_id: string
           nome: string
-          email: string | null
+          cpf: string
           telefone: string | null
-          whatsapp: string | null
-          documento: string | null
-          endereco: string | null
           created_at: string
+          updated_at: string
         }
         Insert: {
           id?: string
           organizacao_id: string
           nome: string
-          email?: string | null
+          cpf: string
           telefone?: string | null
-          whatsapp?: string | null
-          documento?: string | null
-          endereco?: string | null
           created_at?: string
+          updated_at?: string
         }
         Update: {
           id?: string
           organizacao_id?: string
           nome?: string
-          email?: string | null
+          cpf?: string
           telefone?: string | null
-          whatsapp?: string | null
-          documento?: string | null
-          endereco?: string | null
           created_at?: string
+          updated_at?: string
         }
       }
       dividas: {
@@ -99,40 +93,43 @@ export interface Database {
           id: string
           organizacao_id: string
           cliente_id: string
-          valor_original: number
-          valor_atual: number
+          valor: number
+          data_compra: string
           data_vencimento: string
           status: string
           taxa_juros: number
-          tipo_juros: string
+          mes_inicio_juros: string
           descricao: string | null
           created_at: string
+          updated_at: string
         }
         Insert: {
           id?: string
-          organizacao_id: string
+          organizacao_id?: string
           cliente_id: string
-          valor_original: number
-          valor_atual: number
+          valor: number
+          data_compra: string
           data_vencimento: string
-          status?: string
+          status: string
           taxa_juros?: number
-          tipo_juros?: string
+          mes_inicio_juros?: string
           descricao?: string | null
           created_at?: string
+          updated_at?: string
         }
         Update: {
           id?: string
           organizacao_id?: string
           cliente_id?: string
-          valor_original?: number
-          valor_atual?: number
+          valor?: number
+          data_compra?: string
           data_vencimento?: string
           status?: string
           taxa_juros?: number
-          tipo_juros?: string
+          mes_inicio_juros?: string
           descricao?: string | null
           created_at?: string
+          updated_at?: string
         }
       }
       comunicacoes_whatsapp: {
