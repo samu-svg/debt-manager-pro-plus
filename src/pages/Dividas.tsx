@@ -4,7 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useDividas } from '@/hooks/use-dividas';
-import { useClientes } from '@/hooks/use-clientes';
+import { useClientesSupabase } from '@/hooks/use-clientes-supabase';
 import DividaForm from '@/components/dividas/DividaForm';
 import { useWhatsApp } from '@/hooks/use-whatsapp';
 import EnvioCobrancaModal from '@/components/whatsapp/EnvioCobrancaModal';
@@ -14,8 +14,8 @@ import TabAtrasadas from '@/components/dividas/TabAtrasadas';
 import TabPadrao from '@/components/dividas/TabPadrao';
 
 const Dividas = () => {
-  const { dividas, marcarComoPaga } = useDividas();
-  const { clientes, getCliente } = useClientes();
+  const { dividas, marcarComoPaga, criarDivida } = useDividas();
+  const { clientes, getCliente } = useClientesSupabase();
   const { mensagensEnviadas, envioAutomatico, alternarEnvioAutomatico, enviarCobranca } = useWhatsApp();
   
   const [activeTab, setActiveTab] = useState('todas');
@@ -63,10 +63,11 @@ const Dividas = () => {
   };
   
   // Criar nova dívida
-  const handleCriarDivida = (data: any) => {
-    // Esta função seria implementada com a integração real
-    console.log('Criando dívida:', data);
-    setIsDividaDialogOpen(false);
+  const handleCriarDivida = async (data: any) => {
+    const resultado = await criarDivida(data);
+    if (resultado) {
+      setIsDividaDialogOpen(false);
+    }
   };
   
   // Abrir modal de envio de cobrança

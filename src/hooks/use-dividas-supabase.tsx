@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { Divida, StatusPagamento } from '@/types';
+import { Divida, StatusPagamento, MesInicioJuros } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { determinarStatusDivida } from '@/lib/utils';
 import {
@@ -14,14 +14,14 @@ import {
   DividaUpdate
 } from '@/services/dividas-service';
 
-export const useDividas = (clienteId?: string) => {
+export const useDividasSupabase = (clienteId?: string) => {
   const [dividas, setDividas] = useState<Divida[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
-  // Carregar todas as dívidas ou dívidas de um cliente específico
-  const loadDividas = async () => {
+  // Carregar dívidas
+  const carregarDividas = async () => {
     try {
       setLoading(true);
       setError(null);
@@ -30,7 +30,7 @@ export const useDividas = (clienteId?: string) => {
         ? await listarDividasPorCliente(clienteId)
         : await listarDividas();
       
-      // Atualiza o status das dívidas com base na data de vencimento
+      // Atualizar status das dívidas com base na data de vencimento
       const dividasAtualizadas = data.map(divida => {
         if (divida.status !== 'pago') {
           const novoStatus = determinarStatusDivida(divida.dataVencimento);
@@ -54,8 +54,8 @@ export const useDividas = (clienteId?: string) => {
     }
   };
 
-  // Carregar dívida por ID
-  const getDivida = async (id: string) => {
+  // Buscar dívida por ID
+  const buscarDivida = async (id: string) => {
     try {
       return await buscarDividaPorId(id);
     } catch (err) {
@@ -69,18 +69,18 @@ export const useDividas = (clienteId?: string) => {
     }
   };
 
-  // Adicionar nova dívida
-  const criarDivida = async (divida: Omit<Divida, 'id' | 'createdAt' | 'updatedAt'>) => {
+  // Criar nova dívida
+  const adicionarDivida = async (dadosDivida: Omit<Divida, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
       const dividaInsert: DividaInsert = {
-        cliente_id: divida.clienteId,
-        valor: divida.valor,
-        data_compra: divida.dataCompra,
-        data_vencimento: divida.dataVencimento,
-        status: divida.status,
-        descricao: divida.descricao,
-        taxa_juros: divida.taxaJuros,
-        mes_inicio_juros: divida.mesInicioJuros
+        cliente_id: dadosDivida.clienteId,
+        valor: dadosDivida.valor,
+        data_compra: dadosDivida.dataCompra,
+        data_vencimento: dadosDivida.dataVencimento,
+        status: dadosDivida.status,
+        descricao: dadosDivida.descricao,
+        taxa_juros: dadosDivida.taxaJuros,
+        mes_inicio_juros: dadosDivida.mesInicioJuros
       };
 
       const novaDivida = await criarDivida(dividaInsert);
@@ -103,8 +103,8 @@ export const useDividas = (clienteId?: string) => {
     }
   };
 
-  // Atualizar dívida existente
-  const atualizarDivida = async (id: string, updates: Partial<Omit<Divida, 'id' | 'createdAt' | 'updatedAt'>>) => {
+  // Atualizar dívida
+  const editarDivida = async (id: string, updates: Partial<Omit<Divida, 'id' | 'createdAt' | 'updatedAt'>>) => {
     try {
       const dividaUpdate: DividaUpdate = {};
       
@@ -136,9 +136,9 @@ export const useDividas = (clienteId?: string) => {
     }
   };
 
-  // Marcar dívida como paga
+  // Marcar como paga
   const marcarComoPaga = async (id: string) => {
-    return await atualizarDivida(id, { status: 'pago' });
+    return await editarDivida(id, { status: 'pago' });
   };
 
   // Remover dívida
@@ -164,26 +164,26 @@ export const useDividas = (clienteId?: string) => {
     }
   };
 
-  // Filtrar dívidas por status
+  // Filtrar por status
   const filtrarPorStatus = (status: StatusPagamento) => {
     return dividas.filter(divida => divida.status === status);
   };
 
   // Carregar dívidas na inicialização
   useEffect(() => {
-    loadDividas();
+    carregarDividas();
   }, [clienteId]);
 
   return {
     dividas,
     loading,
     error,
-    getDivida,
-    criarDivida,
-    atualizarDivida,
+    buscarDivida,
+    adicionarDivida,
+    editarDivida,
     marcarComoPaga,
     removerDivida,
     filtrarPorStatus,
-    recarregarDividas: loadDividas
+    recarregarDividas: carregarDividas
   };
 };

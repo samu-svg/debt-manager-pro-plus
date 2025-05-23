@@ -47,6 +47,56 @@ export type Database = {
           },
         ]
       }
+      dividas: {
+        Row: {
+          cliente_id: string
+          created_at: string | null
+          data_compra: string
+          data_vencimento: string
+          descricao: string | null
+          id: string
+          mes_inicio_juros: string | null
+          status: string
+          taxa_juros: number | null
+          updated_at: string | null
+          valor: number
+        }
+        Insert: {
+          cliente_id: string
+          created_at?: string | null
+          data_compra: string
+          data_vencimento: string
+          descricao?: string | null
+          id?: string
+          mes_inicio_juros?: string | null
+          status: string
+          taxa_juros?: number | null
+          updated_at?: string | null
+          valor: number
+        }
+        Update: {
+          cliente_id?: string
+          created_at?: string | null
+          data_compra?: string
+          data_vencimento?: string
+          descricao?: string | null
+          id?: string
+          mes_inicio_juros?: string | null
+          status?: string
+          taxa_juros?: number | null
+          updated_at?: string | null
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dividas_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organizacoes: {
         Row: {
           created_at: string | null
