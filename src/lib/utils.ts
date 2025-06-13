@@ -69,3 +69,61 @@ export const formatarTelefone = (telefone: string): string => {
   }
   return telefone;
 };
+
+// Determinar status da dívida baseado na data de vencimento
+export const determinarStatusDivida = (dataVencimento: string): 'pendente' | 'vencido' => {
+  const hoje = new Date();
+  const vencimento = new Date(dataVencimento);
+  return hoje > vencimento ? 'vencido' : 'pendente';
+};
+
+// Calcular juros simples
+export const calcularJurosSimples = (principal: number, taxa: number, tempo: number): number => {
+  return principal * (1 + (taxa / 100) * tempo);
+};
+
+// Calcular juros compostos
+export const calcularJurosCompostos = (principal: number, taxa: number, tempo: number): number => {
+  return principal * Math.pow(1 + (taxa / 100), tempo);
+};
+
+// Calcular meses de atraso
+export const calcularMesesAtraso = (dataVencimento: string): number => {
+  const hoje = new Date();
+  const vencimento = new Date(dataVencimento);
+  
+  if (hoje <= vencimento) return 0;
+  
+  const diffTime = hoje.getTime() - vencimento.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  return Math.ceil(diffDays / 30);
+};
+
+// Converter mês de início de juros para número
+export const converterMesInicioJurosParaNumero = (mes: string): number => {
+  const meses: Record<string, number> = {
+    'primeiro': 1,
+    'segundo': 2,
+    'terceiro': 3,
+    'imediatamente': 0
+  };
+  return meses[mes] || 1;
+};
+
+// Calcular dívida corrigida com juros
+export const calcularDividaCorrigida = (
+  valorOriginal: number,
+  dataVencimento: string,
+  taxaJuros: number,
+  mesInicioJuros: string = 'primeiro'
+): number => {
+  const mesesAtraso = calcularMesesAtraso(dataVencimento);
+  const inicioJuros = converterMesInicioJurosParaNumero(mesInicioJuros);
+  
+  if (mesesAtraso <= inicioJuros) {
+    return valorOriginal;
+  }
+  
+  const mesesComJuros = mesesAtraso - inicioJuros;
+  return calcularJurosCompostos(valorOriginal, taxaJuros, mesesComJuros);
+};
