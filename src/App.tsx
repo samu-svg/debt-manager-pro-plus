@@ -1,81 +1,34 @@
 
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { Toaster } from '@/components/ui/toaster';
-import { AuthProvider, useAuth } from '@/contexts/AuthContext';
-import { LocalDataProvider } from '@/contexts/LocalDataContext';
+import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import Header from '@/components/layout/Header';
-import AuthPage from '@/pages/Auth/AuthPage';
-import Dashboard from '@/pages/Dashboard';
-import Clientes from '@/pages/Clientes';
-import ClienteDetalhes from '@/pages/ClienteDetalhes';
-import Dividas from '@/pages/Dividas';
+import { Toaster } from '@/components/ui/toaster';
+import { AuthProvider } from '@/contexts/AuthContext';
+import { LocalDataProvider } from '@/contexts/LocalDataContext';
+import ConfiguracaoPastaModal from '@/components/layout/ConfiguracaoPastaModal';
+import AppLayout from '@/layouts/AppLayout';
+import './App.css';
 
-const queryClient = new QueryClient();
-
-// Componente para proteger rotas
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, loading } = useAuth();
-  
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
-  
-  if (!user) {
-    return <Navigate to="/auth" replace />;
-  }
-  
-  return <>{children}</>;
-};
-
-// Layout principal
-const MainLayout = ({ children }: { children: React.ReactNode }) => {
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <Header />
-      <main className="container mx-auto px-4 py-8">
-        {children}
-      </main>
-    </div>
-  );
-};
-
-// Componente de rotas principais
-const AppRoutes = () => {
-  const { user } = useAuth();
-  
-  if (!user) {
-    return <AuthPage />;
-  }
-  
-  return (
-    <LocalDataProvider>
-      <MainLayout>
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/clientes" element={<Clientes />} />
-          <Route path="/clientes/:id" element={<ClienteDetalhes />} />
-          <Route path="/dividas" element={<Dividas />} />
-          <Route path="/auth" element={<Navigate to="/" replace />} />
-        </Routes>
-      </MainLayout>
-    </LocalDataProvider>
-  );
-};
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      retry: 1,
+    },
+  },
+});
 
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <Router>
-          <AppRoutes />
-          <Toaster />
-        </Router>
-      </AuthProvider>
+      <BrowserRouter>
+        <AuthProvider>
+          <LocalDataProvider>
+            <AppLayout />
+            <ConfiguracaoPastaModal />
+            <Toaster />
+          </LocalDataProvider>
+        </AuthProvider>
+      </BrowserRouter>
     </QueryClientProvider>
   );
 }

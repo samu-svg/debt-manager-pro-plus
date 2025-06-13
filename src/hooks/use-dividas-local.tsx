@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useLocalData } from '@/contexts/LocalDataContext';
@@ -40,12 +41,15 @@ export const useDividasLocal = (clienteId?: string) => {
   const adicionarDivida = async (dividaData: Omit<DividaLocal, 'id' | 'createdAt' | 'updatedAt' | 'valorAtualizado'>) => {
     try {
       setLoading(true);
+      console.log('Criando dívida com dados:', dividaData);
       
       const novaDivida = criarDivida(dividaData);
       
       if (!novaDivida) {
         throw new Error('Não foi possível criar a dívida');
       }
+      
+      console.log('Dívida criada com sucesso:', novaDivida);
       
       toast({
         title: 'Sucesso',
@@ -135,7 +139,7 @@ export const useDividasLocal = (clienteId?: string) => {
     return dividasFiltradas.filter(divida => divida.status === status);
   };
 
-  // Obter dívidas por cliente (alias para compatibilidade)
+  // Obter dívidas por cliente (compatibilidade)
   const obterDividasPorClienteLocal = (clienteId: string) => {
     return obterDividasPorCliente(clienteId);
   };
@@ -150,7 +154,7 @@ export const useDividasLocal = (clienteId?: string) => {
     marcarComoPaga,
     removerDivida: removerDividaLocal,
     filtrarPorStatus,
-    obterDividasPorCliente: obterDividasPorClienteLocal, // Adding for compatibility
+    obterDividasPorCliente: obterDividasPorClienteLocal,
     recarregarDividas: recarregar
   };
 };

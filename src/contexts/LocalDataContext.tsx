@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { ClienteLocal, DividaLocal, PagamentoLocal, StatusSincronizacao } from '@/types/localStorage';
 import * as LocalStorage from '@/services/localStorage.service';
@@ -47,9 +48,16 @@ export const LocalDataProvider = ({ children }: { children: React.ReactNode }) =
 
   // Carregar dados iniciais
   const carregarDados = () => {
+    console.log('Carregando dados do localStorage...');
     const clientesData = LocalStorage.obterClientes();
     const dividasData = LocalStorage.obterDividas();
     const pagamentosData = LocalStorage.obterPagamentos();
+    
+    console.log('Dados carregados:', { 
+      clientes: clientesData.length, 
+      dividas: dividasData.length, 
+      pagamentos: pagamentosData.length 
+    });
     
     setClientes(clientesData);
     setDividas(dividasData);
@@ -61,10 +69,26 @@ export const LocalDataProvider = ({ children }: { children: React.ReactNode }) =
     const suporta = FileSystem.suportaFileSystemAPI();
     const handle = await FileSystem.recuperarHandlePasta();
     
-    setStatusSincronizacao({
+    const novoStatus = {
       conectado: suporta && !!handle,
       pastaConfigurada: !!handle
-    });
+    };
+    
+    console.log('Status de sincronização atualizado:', novoStatus);
+    setStatusSincronizacao(novoStatus);
+  };
+
+  // Auto-sincronização
+  const autoSincronizar = async () => {
+    try {
+      if (statusSincronizacao.pastaConfigurada) {
+        console.log('Executando auto-sincronização...');
+        await FileSystem.sincronizarDados();
+        carregarDados(); // Recarregar dados após sincronização
+      }
+    } catch (error) {
+      console.error('Erro na auto-sincronização:', error);
+    }
   };
 
   // Inicialização
@@ -77,22 +101,32 @@ export const LocalDataProvider = ({ children }: { children: React.ReactNode }) =
     }
   }, []);
 
+  // Auto-sincronização a cada 30 segundos
+  useEffect(() => {
+    const intervalo = setInterval(autoSincronizar, 30000);
+    return () => clearInterval(intervalo);
+  }, [statusSincronizacao.pastaConfigurada]);
+
   // Funções dos clientes
   const criarClienteLocal = (clienteData: Omit<ClienteLocal, 'id' | 'createdAt' | 'updatedAt' | 'dividas' | 'pagamentos'>) => {
+    console.log('Criando cliente no contexto:', clienteData);
     const novoCliente = LocalStorage.criarCliente(clienteData);
     carregarDados();
+    autoSincronizar(); // Sincronizar após mudança
     return novoCliente;
   };
 
   const atualizarClienteLocal = (id: string, updates: Partial<Omit<ClienteLocal, 'id' | 'createdAt' | 'dividas' | 'pagamentos'>>) => {
     const clienteAtualizado = LocalStorage.atualizarCliente(id, updates);
     carregarDados();
+    autoSincronizar(); // Sincronizar após mudança
     return clienteAtualizado;
   };
 
   const removerClienteLocal = (id: string) => {
     const sucesso = LocalStorage.removerCliente(id);
     carregarDados();
+    autoSincronizar(); // Sincronizar após mudança
     return sucesso;
   };
 
@@ -102,20 +136,25 @@ export const LocalDataProvider = ({ children }: { children: React.ReactNode }) =
 
   // Funções das dívidas
   const criarDividaLocal = (dividaData: Omit<DividaLocal, 'id' | 'createdAt' | 'updatedAt' | 'valorAtualizado'>) => {
+    console.log('Criando dívida no contexto:', dividaData);
     const novaDivida = LocalStorage.criarDivida(dividaData);
+    console.log('Dívida criada no contexto:', novaDivida);
     carregarDados();
+    autoSincronizar(); // Sincronizar após mudança
     return novaDivida;
   };
 
   const atualizarDividaLocal = (id: string, updates: Partial<Omit<DividaLocal, 'id' | 'createdAt'>>) => {
     const dividaAtualizada = LocalStorage.atualizarDivida(id, updates);
     carregarDados();
+    autoSincronizar(); // Sincronizar após mudança
     return dividaAtualizada;
   };
 
   const removerDividaLocal = (id: string) => {
     const sucesso = LocalStorage.removerDivida(id);
     carregarDados();
+    autoSincronizar(); // Sincronizar após mudança
     return sucesso;
   };
 
@@ -123,12 +162,14 @@ export const LocalDataProvider = ({ children }: { children: React.ReactNode }) =
   const criarPagamentoLocal = (pagamentoData: Omit<PagamentoLocal, 'id' | 'createdAt' | 'updatedAt'>) => {
     const novoPagamento = LocalStorage.criarPagamento(pagamentoData);
     carregarDados();
+    autoSincronizar(); // Sincronizar após mudança
     return novoPagamento;
   };
 
   // File System
   const configurarPasta = async () => {
     try {
+      console.log('Configurando pasta local...');
       const handle = await FileSystem.configurarPastaLocal();
       if (handle) {
         await verificarStatus();
@@ -142,6 +183,7 @@ export const LocalDataProvider = ({ children }: { children: React.ReactNode }) =
 
   const sincronizar = async () => {
     try {
+      console.log('Sincronizando dados...');
       const status = await FileSystem.sincronizarDados();
       setStatusSincronizacao(status);
       carregarDados(); // Recarregar após sincronização

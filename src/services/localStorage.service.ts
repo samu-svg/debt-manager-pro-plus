@@ -16,6 +16,7 @@ const initializeLocalStorage = (): DadosLocais => {
   };
   
   localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultData));
+  console.log('LocalStorage inicializado com dados padrão');
   return defaultData;
 };
 
@@ -24,9 +25,14 @@ export const getDadosLocais = (): DadosLocais => {
   try {
     const dados = localStorage.getItem(STORAGE_KEY);
     if (!dados) {
+      console.log('Dados não encontrados, inicializando...');
       return initializeLocalStorage();
     }
-    return JSON.parse(dados);
+    const parsedData = JSON.parse(dados);
+    console.log('Dados carregados do localStorage:', { 
+      clientes: parsedData.clientes?.length || 0 
+    });
+    return parsedData;
   } catch (error) {
     console.error('Erro ao ler dados do localStorage:', error);
     return initializeLocalStorage();
@@ -38,6 +44,10 @@ export const salvarDadosLocais = (dados: DadosLocais): void => {
   try {
     dados.configuracoes.ultimaAtualizacao = new Date().toISOString();
     localStorage.setItem(STORAGE_KEY, JSON.stringify(dados));
+    console.log('Dados salvos no localStorage:', { 
+      clientes: dados.clientes.length,
+      totalDividas: dados.clientes.reduce((total, c) => total + c.dividas.length, 0)
+    });
   } catch (error) {
     console.error('Erro ao salvar dados no localStorage:', error);
     throw new Error('Não foi possível salvar os dados');
@@ -58,11 +68,13 @@ export const criarCliente = (cliente: Omit<ClienteLocal, 'id' | 'createdAt' | 'u
   
   dados.clientes.push(novoCliente);
   salvarDadosLocais(dados);
+  console.log('Cliente criado:', novoCliente.nome);
   return novoCliente;
 };
 
 export const obterClientes = (): ClienteLocal[] => {
-  return getDadosLocais().clientes;
+  const dados = getDadosLocais();
+  return dados.clientes;
 };
 
 export const obterClientePorId = (id: string): ClienteLocal | null => {
@@ -83,6 +95,7 @@ export const atualizarCliente = (id: string, updates: Partial<Omit<ClienteLocal,
   };
   
   salvarDadosLocais(dados);
+  console.log('Cliente atualizado:', dados.clientes[index].nome);
   return dados.clientes[index];
 };
 
@@ -92,8 +105,10 @@ export const removerCliente = (id: string): boolean => {
   
   if (index === -1) return false;
   
+  const clienteRemovido = dados.clientes[index];
   dados.clientes.splice(index, 1);
   salvarDadosLocais(dados);
+  console.log('Cliente removido:', clienteRemovido.nome);
   return true;
 };
 
@@ -102,24 +117,37 @@ export const criarDivida = (divida: Omit<DividaLocal, 'id' | 'createdAt' | 'upda
   const dados = getDadosLocais();
   const clienteIndex = dados.clientes.findIndex(c => c.id === divida.clienteId);
   
-  if (clienteIndex === -1) return null;
+  if (clienteIndex === -1) {
+    console.error('Cliente não encontrado para criar dívida:', divida.clienteId);
+    return null;
+  }
   
   const novaDivida: DividaLocal = {
     ...divida,
     id: crypto.randomUUID(),
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    valorAtualizado: divida.valor // Será calculado depois
+    valorAtualizado: divida.valor // Inicialmente igual ao valor original
   };
   
   dados.clientes[clienteIndex].dividas.push(novaDivida);
   salvarDadosLocais(dados);
+  
+  console.log('Dívida criada:', {
+    id: novaDivida.id,
+    cliente: dados.clientes[clienteIndex].nome,
+    valor: novaDivida.valor,
+    descricao: novaDivida.descricao
+  });
+  
   return novaDivida;
 };
 
 export const obterDividas = (): DividaLocal[] => {
   const dados = getDadosLocais();
-  return dados.clientes.flatMap(c => c.dividas);
+  const todasDividas = dados.clientes.flatMap(c => c.dividas);
+  console.log('Dívidas obtidas:', todasDividas.length);
+  return todasDividas;
 };
 
 export const obterDividasPorCliente = (clienteId: string): DividaLocal[] => {
@@ -139,10 +167,12 @@ export const atualizarDivida = (dividaId: string, updates: Partial<Omit<DividaLo
         updatedAt: new Date().toISOString()
       };
       salvarDadosLocais(dados);
+      console.log('Dívida atualizada:', cliente.dividas[dividaIndex]);
       return cliente.dividas[dividaIndex];
     }
   }
   
+  console.error('Dívida não encontrada para atualizar:', dividaId);
   return null;
 };
 
@@ -152,12 +182,15 @@ export const removerDivida = (dividaId: string): boolean => {
   for (const cliente of dados.clientes) {
     const dividaIndex = cliente.dividas.findIndex(d => d.id === dividaId);
     if (dividaIndex !== -1) {
+      const dividaRemovida = cliente.dividas[dividaIndex];
       cliente.dividas.splice(dividaIndex, 1);
       salvarDadosLocais(dados);
+      console.log('Dívida removida:', dividaRemovida);
       return true;
     }
   }
   
+  console.error('Dívida não encontrada para remover:', dividaId);
   return false;
 };
 
@@ -177,6 +210,7 @@ export const criarPagamento = (pagamento: Omit<PagamentoLocal, 'id' | 'createdAt
   
   dados.clientes[clienteIndex].pagamentos.push(novoPagamento);
   salvarDadosLocais(dados);
+  console.log('Pagamento criado:', novoPagamento);
   return novoPagamento;
 };
 
