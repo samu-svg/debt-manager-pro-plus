@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,7 +6,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Badge } from '@/components/ui/badge';
 import { Search, Plus, User, Phone, Mail, MapPin, CreditCard } from 'lucide-react';
 import { useClientesLocal } from '@/hooks/use-clientes-local';
-import { ClienteForm } from '@/components/clientes/ClienteForm';
+import ClienteForm from '@/components/clientes/ClienteForm';
 import { formatarMoeda, formatarTelefone } from '@/lib/utils';
 import { ClienteLocal } from '@/types/localStorage';
 
@@ -20,7 +19,7 @@ const Clientes = () => {
     clientes,
     loading,
     error,
-    adicionarCliente,
+    criarCliente,
     atualizarCliente,
     removerCliente,
     buscarClientes
@@ -43,7 +42,7 @@ const Clientes = () => {
     if (editingCliente) {
       await atualizarCliente(editingCliente.id, dadosCliente);
     } else {
-      await adicionarCliente(dadosCliente);
+      await criarCliente(dadosCliente);
     }
     
     setIsDialogOpen(false);
