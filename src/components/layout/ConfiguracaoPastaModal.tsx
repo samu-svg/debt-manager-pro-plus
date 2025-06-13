@@ -7,24 +7,15 @@ import { Folder, AlertCircle, CheckCircle2, HardDrive } from 'lucide-react';
 import { useLocalData } from '@/contexts/LocalDataContext';
 import { useToast } from '@/hooks/use-toast';
 
-const ConfiguracaoPastaModal = () => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [isConfiguring, setIsConfiguring] = useState(false);
-  const { statusSincronizacao, configurarPasta } = useLocalData();
-  const { toast } = useToast();
+interface ConfiguracaoPastaModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
 
-  // Verificar se é o primeiro acesso
-  useEffect(() => {
-    const primeiroAcesso = localStorage.getItem('devedores_primeiro_acesso');
-    const suportaFileSystem = 'showDirectoryPicker' in window;
-    
-    console.log('Verificando primeiro acesso:', { primeiroAcesso, suportaFileSystem });
-    
-    if (!primeiroAcesso && suportaFileSystem && !statusSincronizacao.pastaConfigurada) {
-      console.log('Abrindo modal de configuração da pasta');
-      setIsOpen(true);
-    }
-  }, [statusSincronizacao.pastaConfigurada]);
+const ConfiguracaoPastaModal = ({ isOpen, onClose }: ConfiguracaoPastaModalProps) => {
+  const [isConfiguring, setIsConfiguring] = useState(false);
+  const { configurarPasta } = useLocalData();
+  const { toast } = useToast();
 
   const handleConfigurarPasta = async () => {
     try {
@@ -33,15 +24,12 @@ const ConfiguracaoPastaModal = () => {
       
       await configurarPasta();
       
-      // Marcar que já passou pelo primeiro acesso
-      localStorage.setItem('devedores_primeiro_acesso', 'true');
-      
       toast({
         title: 'Pasta configurada com sucesso!',
         description: 'Seus dados serão sincronizados automaticamente.',
       });
       
-      setIsOpen(false);
+      onClose();
     } catch (error) {
       console.error('Erro ao configurar pasta:', error);
       
@@ -53,6 +41,12 @@ const ConfiguracaoPastaModal = () => {
         toast({
           title: 'Configuração cancelada',
           description: 'Você pode configurar a pasta local a qualquer momento.',
+        });
+      } else if (errorMessage.includes('Cross origin') || errorMessage.includes('SecurityError')) {
+        toast({
+          title: 'Funcionalidade não disponível',
+          description: 'A seleção de pasta não funciona no ambiente de preview. Funciona normalmente quando o app é acessado diretamente.',
+          variant: 'destructive',
         });
       } else {
         toast({
@@ -66,16 +60,6 @@ const ConfiguracaoPastaModal = () => {
     }
   };
 
-  const handlePularConfiguracao = () => {
-    localStorage.setItem('devedores_primeiro_acesso', 'true');
-    setIsOpen(false);
-    
-    toast({
-      title: 'Configuração adiada',
-      description: 'Você pode configurar a pasta local a qualquer momento no cabeçalho.',
-    });
-  };
-
   // Não mostrar se o navegador não suporta File System API
   if (!('showDirectoryPicker' in window)) {
     console.log('Navegador não suporta File System API');
@@ -84,9 +68,9 @@ const ConfiguracaoPastaModal = () => {
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
-      // Permitir fechar apenas se não estiver configurando
-      if (!isConfiguring) {
-        setIsOpen(open);
+      // Permitir fechar sempre
+      if (!open) {
+        onClose();
       }
     }}>
       <DialogContent className="sm:max-w-[500px]">
@@ -134,11 +118,11 @@ const ConfiguracaoPastaModal = () => {
             
             <Button 
               variant="outline" 
-              onClick={handlePularConfiguracao}
+              onClick={onClose}
               disabled={isConfiguring}
               className="w-full"
             >
-              Configurar Depois
+              Fechar
             </Button>
           </div>
 

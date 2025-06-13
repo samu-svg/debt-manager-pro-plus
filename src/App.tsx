@@ -4,7 +4,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/toaster';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { LocalDataProvider } from '@/contexts/LocalDataContext';
-import ConfiguracaoPastaModal from '@/components/layout/ConfiguracaoPastaModal';
 import AppLayout from '@/layouts/AppLayout';
 import './App.css';
 
@@ -24,7 +23,6 @@ function App() {
         <AuthProvider>
           <LocalDataProvider>
             <AppLayout />
-            <ConfiguracaoPastaModal />
             <Toaster />
           </LocalDataProvider>
         </AuthProvider>

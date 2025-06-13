@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { 
@@ -13,25 +13,25 @@ import {
 import { useLocalData } from '@/contexts/LocalDataContext';
 import { useToast } from '@/hooks/use-toast';
 import { formatarData } from '@/lib/utils';
+import ConfiguracaoPastaModal from './ConfiguracaoPastaModal';
 
 const SyncStatus = () => {
   const { statusSincronizacao, configurarPasta, sincronizar, criarBackup } = useLocalData();
   const { toast } = useToast();
+  const [showModal, setShowModal] = useState(false);
 
   const handleConfigurarPasta = async () => {
-    try {
-      await configurarPasta();
+    // Verificar se estamos em um ambiente que suporta a API
+    if (window.location.hostname.includes('lovable.app')) {
       toast({
-        title: 'Pasta configurada',
-        description: 'Sincronização ativada com sucesso',
-      });
-    } catch (error) {
-      toast({
-        title: 'Erro',
-        description: 'Não foi possível configurar a pasta',
+        title: 'Aviso',
+        description: 'A configuração de pasta funciona apenas quando o app é acessado diretamente, não no preview.',
         variant: 'destructive',
       });
+      return;
     }
+    
+    setShowModal(true);
   };
 
   const handleSincronizar = async () => {
@@ -103,48 +103,18 @@ const SyncStatus = () => {
   };
 
   return (
-    <div className="flex items-center gap-2">
-      {getStatusBadge()}
-      
-      {statusSincronizacao.ultimaSincronizacao && (
-        <span className="text-xs text-muted-foreground hidden md:inline">
-          {formatarData(statusSincronizacao.ultimaSincronizacao)}
-        </span>
-      )}
-      
-      <div className="flex items-center gap-1">
-        {!statusSincronizacao.pastaConfigurada ? (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleConfigurarPasta}
-            className="h-8"
-          >
-            <Folder className="h-4 w-4 mr-1" />
-            Configurar
-          </Button>
-        ) : (
-          <>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleSincronizar}
-              className="h-8 w-8 p-0"
-              title="Sincronizar"
-            >
-              <RefreshCw className="h-4 w-4" />
-            </Button>
-            
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleCriarBackup}
-              className="h-8 w-8 p-0"
-              title="Criar backup"
-            >
-              <Download className="h-4 w-4" />
-            </Button>
-            
+    <>
+      <div className="flex items-center gap-2">
+        {getStatusBadge()}
+        
+        {statusSincronizacao.ultimaSincronizacao && (
+          <span className="text-xs text-muted-foreground hidden md:inline">
+            {formatarData(statusSincronizacao.ultimaSincronizacao)}
+          </span>
+        )}
+        
+        <div className="flex items-center gap-1">
+          {!statusSincronizacao.pastaConfigurada ? (
             <Button
               variant="outline"
               size="sm"
@@ -152,12 +122,49 @@ const SyncStatus = () => {
               className="h-8"
             >
               <Folder className="h-4 w-4 mr-1" />
-              Trocar
+              Configurar
             </Button>
-          </>
-        )}
+          ) : (
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleSincronizar}
+                className="h-8 w-8 p-0"
+                title="Sincronizar"
+              >
+                <RefreshCw className="h-4 w-4" />
+              </Button>
+              
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleCriarBackup}
+                className="h-8 w-8 p-0"
+                title="Criar backup"
+              >
+                <Download className="h-4 w-4" />
+              </Button>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleConfigurarPasta}
+                className="h-8"
+              >
+                <Folder className="h-4 w-4 mr-1" />
+                Trocar
+              </Button>
+            </>
+          )}
+        </div>
       </div>
-    </div>
+
+      <ConfiguracaoPastaModal 
+        isOpen={showModal} 
+        onClose={() => setShowModal(false)} 
+      />
+    </>
   );
 };
 
