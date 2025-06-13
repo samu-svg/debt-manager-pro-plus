@@ -17,13 +17,17 @@ const queryClient = new QueryClient({
 });
 
 function App() {
+  console.log('App component renderizando...');
+  
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <AuthProvider>
           <LocalDataProvider>
-            <AppLayout />
-            <Toaster />
+            <div className="min-h-screen bg-gray-50">
+              <AppLayout />
+              <Toaster />
+            </div>
           </LocalDataProvider>
         </AuthProvider>
       </BrowserRouter>

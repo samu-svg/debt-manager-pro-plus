@@ -1,5 +1,5 @@
 
-import { Outlet } from "react-router-dom";
+import Router from "@/Router";
 import Navbar from "@/components/layout/Navbar";
 import Sidebar from "@/components/layout/Sidebar";
 import { SidebarProvider } from "@/components/ui/sidebar";
@@ -8,6 +8,8 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useToast } from "@/hooks/use-toast";
 
 const AppLayout = () => {
+  console.log('AppLayout renderizando...');
+  
   const isMobile = useIsMobile();
   const [isSidebarOpen, setIsSidebarOpen] = useState(!isMobile);
   const { toast } = useToast();
@@ -39,6 +41,8 @@ const AppLayout = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
 
+  console.log('AppLayout: renderizando com sidebar open:', isSidebarOpen);
+
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-gray-50">
@@ -46,7 +50,7 @@ const AppLayout = () => {
         <div className="flex flex-col flex-1 w-full">
           <Navbar toggleSidebar={toggleSidebar} />
           <main className="flex-1 p-3 md:p-6 overflow-auto">
-            <Outlet />
+            <Router />
           </main>
         </div>
       </div>
