@@ -1,9 +1,7 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { ClienteLocal, DividaLocal, PagamentoLocal, StatusSincronizacao } from '@/types/localStorage';
 import * as LocalStorage from '@/services/localStorage.service';
 import * as FileSystem from '@/services/fileSystem.service';
-import { iniciarAtualizacaoAutomatica } from '@/services/juros.service';
 
 interface LocalDataContextType {
   // Clientes
@@ -73,7 +71,6 @@ export const LocalDataProvider = ({ children }: { children: React.ReactNode }) =
   useEffect(() => {
     carregarDados();
     verificarStatus();
-    iniciarAtualizacaoAutomatica();
     
     if (FileSystem.suportaFileSystemAPI()) {
       FileSystem.inicializarSincronizacao();

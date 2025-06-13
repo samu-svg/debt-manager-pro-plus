@@ -66,7 +66,7 @@ const ClienteForm = ({ cliente, onSave, onCancel }: ClienteFormProps) => {
       const telefoneFormatado = formatarTelefone(data.telefone);
 
       const dadosFormatados = {
-        ...data,
+        nome: data.nome, // Ensure nome is always included
         cpf: cpfFormatado,
         telefone: telefoneFormatado,
         email: cliente?.email || '',

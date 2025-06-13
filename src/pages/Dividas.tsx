@@ -1,207 +1,285 @@
 
-import { useState } from 'react';
+import React, { useState } from 'react';
+import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { useDividasSupabase } from '@/hooks/use-dividas-supabase';
-import { useClientesSupabase } from '@/hooks/use-clientes-supabase';
-import DividaForm from '@/components/dividas/DividaForm';
-import { useWhatsApp } from '@/hooks/use-whatsapp';
-import EnvioCobrancaModal from '@/components/whatsapp/EnvioCobrancaModal';
-import { useDividaFiltros } from '@/hooks/use-divida-filtros';
-import DividasHeader from '@/components/dividas/DividasHeader';
-import TabAtrasadas from '@/components/dividas/TabAtrasadas';
-import TabPadrao from '@/components/dividas/TabPadrao';
-import { Cliente } from '@/types';
+import { Plus, DollarSign, Calendar, User } from 'lucide-react';
+import { useDividasLocal } from '@/hooks/use-dividas-local';
+import { useClientesLocal } from '@/hooks/use-clientes-local';
+import { formatarMoeda, formatarData } from '@/lib/utils';
 
 const Dividas = () => {
-  const { dividas, marcarComoPaga, adicionarDivida } = useDividasSupabase();
-  const { clientes } = useClientesSupabase();
-  const { mensagensEnviadas, envioAutomatico, alternarEnvioAutomatico, enviarCobranca } = useWhatsApp();
-  
-  const [activeTab, setActiveTab] = useState('todas');
-  const [clienteSelecionadoId, setClienteSelecionadoId] = useState<string | null>(null);
-  const [isDividaDialogOpen, setIsDividaDialogOpen] = useState(false);
-  const [cobrancaModal, setCobrancaModal] = useState<{isOpen: boolean, dividaId: string | null}>({
-    isOpen: false,
-    dividaId: null
-  });
-  
-  // Obter cliente por ID do array local
-  const getCliente = (clienteId: string): Cliente | null => {
-    return clientes.find(cliente => cliente.id === clienteId) || null;
-  };
-  
-  // Obter nome do cliente
+  const { dividas, loading, error } = useDividasLocal();
+  const { clientes } = useClientesLocal();
+
+  // Filtrar dívidas por status
+  const dividasPendentes = dividas.filter(d => d.status === 'pendente');
+  const dividasVencidas = dividas.filter(d => d.status === 'vencido');
+  const dividasPagas = dividas.filter(d => d.status === 'pago');
+
+  // Calcular totais
+  const totalPendente = dividasPendentes.reduce((acc, d) => acc + d.valorAtualizado, 0);
+  const totalVencido = dividasVencidas.reduce((acc, d) => acc + d.valorAtualizado, 0);
+  const totalPago = dividasPagas.reduce((acc, d) => acc + d.valor, 0);
+
   const getClienteNome = (clienteId: string) => {
-    const cliente = getCliente(clienteId);
-    return cliente ? cliente.nome : 'Cliente não encontrado';
+    const cliente = clientes.find(c => c.id === clienteId);
+    return cliente?.nome || 'Cliente não encontrado';
   };
-  
-  // Hook para filtros de dívidas
-  const { 
-    busca, 
-    setBusca, 
-    filtroMensagens, 
-    setFiltroMensagens,
-    dividasAtrasadas,
-    dividasPendentes, 
-    dividasPagas,
-    filtrarDividas, 
-    filtrarPorStatusMensagem 
-  } = useDividaFiltros({ 
-    dividas, 
-    getClienteNome 
-  });
-  
-  // Dividir dívidas por status para exibição
-  const dividasAExibir = {
-    todas: filtrarDividas(dividas),
-    atrasadas: filtrarPorStatusMensagem(filtrarDividas(dividasAtrasadas), mensagensEnviadas),
-    pendentes: filtrarDividas(dividasPendentes),
-    pagas: filtrarDividas(dividasPagas)
-  };
-  
-  // Abrir dialog para adicionar dívida
-  const handleAdicionarDivida = (clienteId: string) => {
-    setClienteSelecionadoId(clienteId);
-    setIsDividaDialogOpen(true);
-  };
-  
-  // Criar nova dívida
-  const handleCriarDivida = async (data: any) => {
-    const resultado = await adicionarDivida(data);
-    if (resultado) {
-      setIsDividaDialogOpen(false);
-    }
-  };
-  
-  // Abrir modal de envio de cobrança
-  const handleAbrirEnvioCobranca = (dividaId: string) => {
-    setCobrancaModal({
-      isOpen: true,
-      dividaId
-    });
-  };
-  
-  // Processar envio de cobrança
-  const handleEnviarCobranca = (numeroWhatsApp: string, mensagem: string) => {
-    if (!cobrancaModal.dividaId) return;
-    enviarCobranca(cobrancaModal.dividaId, numeroWhatsApp, mensagem);
-    setCobrancaModal({ isOpen: false, dividaId: null });
-  };
-  
-  // Toggle para envio automático
-  const handleToggleEnvioAutomatico = (ativo: boolean) => {
-    alternarEnvioAutomatico(ativo);
-  };
-  
-  const getDivida = (id: string | null) => {
-    if (!id) return null;
-    return dividas.find(divida => divida.id === id) || null;
-  };
-  
-  const getClienteFromDividaId = (dividaId: string | null): Cliente | null => {
-    if (!dividaId) return null;
-    const divida = getDivida(dividaId);
-    if (!divida) return null;
-    return getCliente(divida.clienteId);
-  };
-  
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Erro ao carregar dívidas</h2>
+          <p className="text-gray-600">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      <DividasHeader busca={busca} onBuscaChange={setBusca} />
-      
-      <Tabs defaultValue="todas" value={activeTab} onValueChange={setActiveTab}>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Dívidas</h1>
+          <p className="text-gray-600">Gerencie todas as dívidas dos seus clientes</p>
+        </div>
+        
+        <Button>
+          <Plus className="mr-2 h-4 w-4" />
+          Nova Dívida
+        </Button>
+      </div>
+
+      {/* Cards de Resumo */}
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Pendentes</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatarMoeda(totalPendente)}</div>
+            <p className="text-xs text-muted-foreground">
+              {dividasPendentes.length} dívida(s)
+            </p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Vencidas</CardTitle>
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-600">{formatarMoeda(totalVencido)}</div>
+            <p className="text-xs text-muted-foreground">
+              {dividasVencidas.length} dívida(s)
+            </p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Pagas</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">{formatarMoeda(totalPago)}</div>
+            <p className="text-xs text-muted-foreground">
+              {dividasPagas.length} dívida(s)
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Tabs das Dívidas */}
+      <Tabs defaultValue="pendentes" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="todas">
-            Todas <Badge variant="secondary" className="ml-2">{dividas.length}</Badge>
-          </TabsTrigger>
-          <TabsTrigger value="atrasadas">
-            Atrasadas <Badge variant="destructive" className="ml-2">{dividasAtrasadas.length}</Badge>
-          </TabsTrigger>
           <TabsTrigger value="pendentes">
-            Pendentes <Badge variant="secondary" className="ml-2">{dividasPendentes.length}</Badge>
+            Pendentes ({dividasPendentes.length})
+          </TabsTrigger>
+          <TabsTrigger value="vencidas">
+            Vencidas ({dividasVencidas.length})
           </TabsTrigger>
           <TabsTrigger value="pagas">
-            Pagas <Badge variant="secondary" className="ml-2">{dividasPagas.length}</Badge>
+            Pagas ({dividasPagas.length})
           </TabsTrigger>
         </TabsList>
-        
-        <TabsContent value="atrasadas" className="mt-6">
-          <TabAtrasadas
-            dividas={dividasAExibir.atrasadas}
-            getClienteNome={getClienteNome}
-            mensagensEnviadas={mensagensEnviadas}
-            envioAutomatico={envioAutomatico}
-            onToggleEnvioAutomatico={handleToggleEnvioAutomatico}
-            filtroMensagens={filtroMensagens}
-            onFiltroChange={setFiltroMensagens}
-            onMarcarComoPaga={marcarComoPaga}
-            onAbrirEnvioCobranca={handleAbrirEnvioCobranca}
-          />
+
+        <TabsContent value="pendentes">
+          <div className="grid gap-4">
+            {dividasPendentes.length === 0 ? (
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-center py-8">
+                    <Calendar className="mx-auto h-12 w-12 text-gray-400" />
+                    <h3 className="mt-2 text-sm font-medium text-gray-900">
+                      Nenhuma dívida pendente
+                    </h3>
+                    <p className="mt-1 text-sm text-gray-500">
+                      Todas as dívidas estão em dia ou já foram pagas.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              dividasPendentes.map((divida) => (
+                <Card key={divida.id}>
+                  <CardHeader>
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <CardTitle className="text-lg">{divida.descricao}</CardTitle>
+                        <CardDescription className="flex items-center mt-1">
+                          <User className="h-3 w-3 mr-1" />
+                          {getClienteNome(divida.clienteId)}
+                        </CardDescription>
+                      </div>
+                      <Badge variant="outline">Pendente</Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid gap-2">
+                      <div className="flex justify-between">
+                        <span className="text-sm text-gray-600">Valor:</span>
+                        <span className="font-semibold">{formatarMoeda(divida.valorAtualizado)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-gray-600">Vencimento:</span>
+                        <span>{formatarData(divida.dataVencimento)}</span>
+                      </div>
+                      {divida.valorAtualizado > divida.valor && (
+                        <div className="flex justify-between text-red-600">
+                          <span className="text-sm">Juros acumulados:</span>
+                          <span className="font-semibold">
+                            {formatarMoeda(divida.valorAtualizado - divida.valor)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </div>
         </TabsContent>
-        
-        <TabsContent value="todas" className="mt-6">
-          <TabPadrao
-            dividas={dividasAExibir.todas}
-            getClienteNome={getClienteNome}
-            onMarcarComoPaga={marcarComoPaga}
-            busca={busca}
-            tipoTab="todas"
-          />
+
+        <TabsContent value="vencidas">
+          <div className="grid gap-4">
+            {dividasVencidas.length === 0 ? (
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-center py-8">
+                    <Calendar className="mx-auto h-12 w-12 text-gray-400" />
+                    <h3 className="mt-2 text-sm font-medium text-gray-900">
+                      Nenhuma dívida vencida
+                    </h3>
+                    <p className="mt-1 text-sm text-gray-500">
+                      Excelente!Todas as dívidas estão em dia.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              dividasVencidas.map((divida) => (
+                <Card key={divida.id} className="border-red-200">
+                  <CardHeader>
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <CardTitle className="text-lg">{divida.descricao}</CardTitle>
+                        <CardDescription className="flex items-center mt-1">
+                          <User className="h-3 w-3 mr-1" />
+                          {getClienteNome(divida.clienteId)}
+                        </CardDescription>
+                      </div>
+                      <Badge variant="destructive">Vencida</Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid gap-2">
+                      <div className="flex justify-between">
+                        <span className="text-sm text-gray-600">Valor:</span>
+                        <span className="font-semibold text-red-600">{formatarMoeda(divida.valorAtualizado)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-gray-600">Vencimento:</span>
+                        <span className="text-red-600">{formatarData(divida.dataVencimento)}</span>
+                      </div>
+                      {divida.valorAtualizado > divida.valor && (
+                        <div className="flex justify-between text-red-600">
+                          <span className="text-sm">Juros acumulados:</span>
+                          <span className="font-semibold">
+                            {formatarMoeda(divida.valorAtualizado - divida.valor)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </div>
         </TabsContent>
-        
-        <TabsContent value="pendentes" className="mt-6">
-          <TabPadrao
-            dividas={dividasAExibir.pendentes}
-            getClienteNome={getClienteNome}
-            onMarcarComoPaga={marcarComoPaga}
-            busca={busca}
-            tipoTab="pendentes"
-          />
-        </TabsContent>
-        
-        <TabsContent value="pagas" className="mt-6">
-          <TabPadrao
-            dividas={dividasAExibir.pagas}
-            getClienteNome={getClienteNome}
-            onMarcarComoPaga={marcarComoPaga}
-            busca={busca}
-            tipoTab="pagas"
-          />
+
+        <TabsContent value="pagas">
+          <div className="grid gap-4">
+            {dividasPagas.length === 0 ? (
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-center py-8">
+                    <DollarSign className="mx-auto h-12 w-12 text-gray-400" />
+                    <h3 className="mt-2 text-sm font-medium text-gray-900">
+                      Nenhuma dívida paga
+                    </h3>
+                    <p className="mt-1 text-sm text-gray-500">
+                      As dívidas pagas aparecerão aqui.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              dividasPagas.map((divida) => (
+                <Card key={divida.id} className="border-green-200">
+                  <CardHeader>
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <CardTitle className="text-lg">{divida.descricao}</CardTitle>
+                        <CardDescription className="flex items-center mt-1">
+                          <User className="h-3 w-3 mr-1" />
+                          {getClienteNome(divida.clienteId)}
+                        </CardDescription>
+                      </div>
+                      <Badge variant="default" className="bg-green-100 text-green-800">Paga</Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid gap-2">
+                      <div className="flex justify-between">
+                        <span className="text-sm text-gray-600">Valor:</span>
+                        <span className="font-semibold text-green-600">{formatarMoeda(divida.valor)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-gray-600">Vencimento:</span>
+                        <span>{formatarData(divida.dataVencimento)}</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </div>
         </TabsContent>
       </Tabs>
-      
-      {/* Modal para envio de cobrança */}
-      {cobrancaModal.dividaId && getClienteFromDividaId(cobrancaModal.dividaId) && getDivida(cobrancaModal.dividaId) && (
-        <EnvioCobrancaModal
-          isOpen={cobrancaModal.isOpen}
-          onClose={() => setCobrancaModal({ isOpen: false, dividaId: null })}
-          cliente={getClienteFromDividaId(cobrancaModal.dividaId)!}
-          divida={getDivida(cobrancaModal.dividaId)!}
-          onEnviar={handleEnviarCobranca}
-        />
-      )}
-      
-      {/* Dialog para adicionar dívida */}
-      {clienteSelecionadoId && getCliente(clienteSelecionadoId) && (
-        <Dialog open={isDividaDialogOpen} onOpenChange={setIsDividaDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Nova Dívida</DialogTitle>
-              <DialogDescription>
-                Registre uma nova dívida para {getClienteNome(clienteSelecionadoId)}
-              </DialogDescription>
-            </DialogHeader>
-            <DividaForm 
-              cliente={getCliente(clienteSelecionadoId)!}
-              onSubmit={handleCriarDivida}
-              onCancel={() => setIsDividaDialogOpen(false)}
-            />
-          </DialogContent>
-        </Dialog>
-      )}
     </div>
   );
 };
