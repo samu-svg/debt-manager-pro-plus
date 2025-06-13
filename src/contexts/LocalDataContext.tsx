@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { ClienteLocal, DividaLocal, PagamentoLocal, StatusSincronizacao } from '@/types/localStorage';
 import * as LocalStorage from '@/services/localStorage.service';
@@ -69,22 +68,39 @@ export const LocalDataProvider = ({ children }: { children: React.ReactNode }) =
 
   // Verificar status da sincronização
   const verificarStatus = async () => {
+    console.log('Verificando status de sincronização...');
+    
     const funcionalidadeDisponivel = FileSystem.funcionalidadeDisponivel();
     const pastaConfigurada = await FileSystem.verificarPastaConfigurada();
+    
+    console.log('Status verificado:', {
+      funcionalidadeDisponivel,
+      pastaConfigurada,
+      clientesLength: clientes.length
+    });
     
     const novoStatus: StatusSincronizacao = {
       conectado: funcionalidadeDisponivel && pastaConfigurada,
       pastaConfigurada: pastaConfigurada
     };
     
-    console.log('Status de sincronização:', novoStatus);
     setStatusSincronizacao(novoStatus);
     
     // Mostrar modal de configuração se:
     // 1. Funcionalidade está disponível
     // 2. Pasta não está configurada
     // 3. Há dados para fazer backup (clientes cadastrados)
-    if (funcionalidadeDisponivel && !pastaConfigurada && clientes.length > 0) {
+    const deveExibirModal = funcionalidadeDisponivel && !pastaConfigurada && clientes.length > 0;
+    
+    console.log('Deve exibir modal?', {
+      funcionalidadeDisponivel,
+      pastaConfigurada: !pastaConfigurada,
+      temClientes: clientes.length > 0,
+      resultado: deveExibirModal
+    });
+    
+    if (deveExibirModal) {
+      console.log('Exibindo modal de configuração obrigatória');
       setMostrarConfiguracao(true);
     }
   };
@@ -105,19 +121,25 @@ export const LocalDataProvider = ({ children }: { children: React.ReactNode }) =
 
   // Inicialização
   useEffect(() => {
+    console.log('LocalDataProvider: Inicializando...');
     carregarDados();
-    verificarStatus();
-    
-    // Iniciar auto-sincronização se disponível
+  }, []);
+
+  // Verificar status após carregar clientes
+  useEffect(() => {
+    console.log('LocalDataProvider: Clientes mudaram, verificando status...', clientes.length);
+    if (clientes.length >= 0) { // Verificar sempre, mesmo com 0 clientes
+      verificarStatus();
+    }
+  }, [clientes.length]);
+
+  // Iniciar auto-sincronização se disponível
+  useEffect(() => {
     if (FileSystem.funcionalidadeDisponivel()) {
+      console.log('Iniciando auto-sincronização...');
       FileSystem.iniciarAutoSincronizacao();
     }
   }, []);
-
-  // Verificar status quando clientes mudam
-  useEffect(() => {
-    verificarStatus();
-  }, [clientes.length]);
 
   // Auto-sincronização a cada 30 segundos
   useEffect(() => {

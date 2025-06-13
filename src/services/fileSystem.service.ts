@@ -9,27 +9,34 @@ const HANDLE_KEY = 'pastaHandle';
 
 // Verificar se o navegador suporta File System Access API
 export const suportaFileSystemAPI = (): boolean => {
-  return 'showDirectoryPicker' in window;
+  const suporta = 'showDirectoryPicker' in window;
+  console.log('Navegador suporta File System API?', suporta);
+  return suporta;
 };
 
 // Verificar se estamos em um ambiente seguro para usar a API
 export const ambienteSeguroParaAPI = (): boolean => {
   // Não funciona em iframes
   if (window.self !== window.top) {
+    console.log('Ambiente não seguro: iframe detectado');
     return false;
   }
   
   // Não funciona em ambientes de preview
   if (window.location.hostname.includes('lovable.app')) {
+    console.log('Ambiente não seguro: preview detectado');
     return false;
   }
   
+  console.log('Ambiente seguro para API');
   return true;
 };
 
 // Verificar se a funcionalidade está disponível
 export const funcionalidadeDisponivel = (): boolean => {
-  return suportaFileSystemAPI() && ambienteSeguroParaAPI();
+  const disponivel = suportaFileSystemAPI() && ambienteSeguroParaAPI();
+  console.log('Funcionalidade File System API disponível?', disponivel);
+  return disponivel;
 };
 
 // Abrir IndexedDB
@@ -72,7 +79,10 @@ const salvarHandlePasta = async (handle: FileSystemDirectoryHandle): Promise<voi
 
 // Recuperar handle da pasta do IndexedDB
 export const recuperarHandlePasta = async (): Promise<FileSystemDirectoryHandle | null> => {
+  console.log('Recuperando handle da pasta...');
+  
   if (!funcionalidadeDisponivel()) {
+    console.log('Funcionalidade não disponível, retornando null');
     return null;
   }
 
@@ -92,17 +102,34 @@ export const recuperarHandlePasta = async (): Promise<FileSystemDirectoryHandle 
     if (handle) {
       // Testar se ainda podemos acessar a pasta
       try {
-        await handle.getFileHandle('test', { create: false });
-        console.log('Handle da pasta recuperado e acessível');
-        return handle;
+        // Tentar acessar a pasta sem criar arquivos
+        const permissions = await (handle as any).queryPermission?.({ mode: 'readwrite' });
+        console.log('Permissões da pasta:', permissions);
+        
+        if (permissions === 'granted') {
+          console.log('Handle da pasta recuperado e acessível');
+          return handle;
+        } else {
+          console.log('Permissão negada para a pasta, removendo handle...');
+          await removerHandlePasta();
+          return null;
+        }
       } catch (error) {
-        // Se não conseguir acessar, limpar o handle salvo
-        console.log('Handle da pasta não tem mais acesso, removendo...');
-        await removerHandlePasta();
-        return null;
+        // Se não conseguir verificar permissões, testar acesso direto
+        try {
+          const testHandle = await handle.getFileHandle('test_access.tmp', { create: true });
+          await testHandle.remove();
+          console.log('Handle da pasta recuperado e acessível (teste direto)');
+          return handle;
+        } catch (accessError) {
+          console.log('Handle da pasta não tem mais acesso, removendo...', accessError);
+          await removerHandlePasta();
+          return null;
+        }
       }
     }
     
+    console.log('Nenhum handle encontrado');
     return null;
   } catch (error) {
     console.error('Erro ao recuperar handle da pasta:', error);
@@ -132,6 +159,8 @@ const removerHandlePasta = async (): Promise<void> => {
 
 // Configurar pasta local
 export const configurarPastaLocal = async (): Promise<FileSystemDirectoryHandle> => {
+  console.log('Configurando pasta local...');
+  
   if (!suportaFileSystemAPI()) {
     throw new Error('Seu navegador não suporta a seleção de pastas. Use Chrome, Edge ou Opera atualizado.');
   }
@@ -173,8 +202,11 @@ export const configurarPastaLocal = async (): Promise<FileSystemDirectoryHandle>
 
 // Verificar se pasta está configurada
 export const verificarPastaConfigurada = async (): Promise<boolean> => {
+  console.log('Verificando se pasta está configurada...');
   const handle = await recuperarHandlePasta();
-  return !!handle;
+  const configurada = !!handle;
+  console.log('Pasta configurada?', configurada);
+  return configurada;
 };
 
 // Ler arquivo JSON da pasta
