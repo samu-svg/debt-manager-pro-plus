@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useLocalData } from '@/contexts/LocalDataContext';
@@ -140,11 +139,17 @@ export const useClientesLocal = () => {
     }
   };
 
+  // Buscar cliente por ID (alias para compatibilidade)
+  const obterClientePorId = (id: string) => {
+    return getCliente(id);
+  };
+
   return {
     clientes,
     loading,
     error,
     getCliente,
+    obterClientePorId, // Adding for compatibility
     criarCliente: criarClienteLocal,
     atualizarCliente: atualizarClienteLocal,
     removerCliente: removerClienteLocal,

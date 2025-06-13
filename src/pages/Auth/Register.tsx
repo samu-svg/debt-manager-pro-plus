@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -57,7 +56,7 @@ const Register = () => {
     
     try {
       console.log('Enviando solicitação de registro...');
-      const { error } = await signUp(email, password, organizationName);
+      const { error } = await signUp(email, password);
       
       if (error) {
         console.error('Erro retornado:', error);

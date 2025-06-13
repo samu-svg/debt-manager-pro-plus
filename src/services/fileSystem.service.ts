@@ -1,4 +1,3 @@
-
 import { DadosLocais, StatusSincronizacao } from '@/types/localStorage';
 import { getDadosLocais, salvarDadosLocais } from './localStorage.service';
 
@@ -65,17 +64,9 @@ export const recuperarHandlePasta = async (): Promise<FileSystemDirectoryHandle 
     db.close();
     
     if (handle) {
-      // Verificar se ainda temos permissão
-      const permission = await handle.queryPermission({ mode: 'readwrite' });
-      if (permission === 'granted') {
-        return handle;
-      } else {
-        // Tentar solicitar permissão novamente
-        const newPermission = await handle.requestPermission({ mode: 'readwrite' });
-        if (newPermission === 'granted') {
-          return handle;
-        }
-      }
+      // Just return the handle without checking permissions
+      // Permission checking is not reliably supported across browsers
+      return handle;
     }
     
     return null;
