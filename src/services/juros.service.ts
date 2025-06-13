@@ -63,7 +63,7 @@ export const atualizarTodasDividas = (): void => {
       if (dividaAtualizada.status !== divida.status || dividaAtualizada.valorAtualizado !== divida.valorAtualizado) {
         atualizarDivida(divida.id, {
           status: dividaAtualizada.status,
-          valorAtualizada: dividaAtualizada.valorAtualizado
+          valorAtualizado: dividaAtualizada.valorAtualizado
         });
       }
     }
