@@ -1,4 +1,3 @@
-
 import { DadosLocais, StatusSincronizacao } from '@/types/localStorage';
 import { getDadosLocais, salvarDadosLocais } from './localStorage.service';
 
@@ -91,25 +90,43 @@ export const recuperarHandlePasta = async (): Promise<FileSystemDirectoryHandle 
     db.close();
     
     if (handle) {
-      // Verificar se ainda temos permissão
-      const permission = await handle.queryPermission({ mode: 'readwrite' });
-      if (permission === 'granted') {
-        console.log('Handle da pasta recuperado com permissão válida');
+      // Testar se ainda podemos acessar a pasta
+      try {
+        await handle.getFileHandle('test', { create: false });
+        console.log('Handle da pasta recuperado e acessível');
         return handle;
-      } else if (permission === 'prompt') {
-        const requestPermission = await handle.requestPermission({ mode: 'readwrite' });
-        if (requestPermission === 'granted') {
-          console.log('Permissão da pasta renovada');
-          return handle;
-        }
+      } catch (error) {
+        // Se não conseguir acessar, limpar o handle salvo
+        console.log('Handle da pasta não tem mais acesso, removendo...');
+        await removerHandlePasta();
+        return null;
       }
-      console.log('Permissão da pasta negada ou expirada');
     }
     
     return null;
   } catch (error) {
     console.error('Erro ao recuperar handle da pasta:', error);
     return null;
+  }
+};
+
+// Remover handle da pasta do IndexedDB
+const removerHandlePasta = async (): Promise<void> => {
+  try {
+    const db = await abrirDB();
+    const transaction = db.transaction([STORE_NAME], 'readwrite');
+    const store = transaction.objectStore(STORE_NAME);
+    
+    await new Promise<void>((resolve, reject) => {
+      const request = store.delete(HANDLE_KEY);
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
+    
+    db.close();
+    console.log('Handle da pasta removido do IndexedDB');
+  } catch (error) {
+    console.error('Erro ao remover handle da pasta:', error);
   }
 };
 

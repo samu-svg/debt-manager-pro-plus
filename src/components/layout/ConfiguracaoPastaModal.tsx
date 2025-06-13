@@ -10,9 +10,10 @@ import { useToast } from '@/hooks/use-toast';
 interface ConfiguracaoPastaModalProps {
   isOpen: boolean;
   onClose: () => void;
+  isObrigatorio?: boolean;
 }
 
-const ConfiguracaoPastaModal = ({ isOpen, onClose }: ConfiguracaoPastaModalProps) => {
+const ConfiguracaoPastaModal = ({ isOpen, onClose, isObrigatorio = false }: ConfiguracaoPastaModalProps) => {
   const [isConfiguring, setIsConfiguring] = useState(false);
   const { configurarPasta } = useLocalData();
   const { toast } = useToast();
@@ -68,8 +69,8 @@ const ConfiguracaoPastaModal = ({ isOpen, onClose }: ConfiguracaoPastaModalProps
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
-      // Permitir fechar sempre
-      if (!open) {
+      // Se é obrigatório, não permitir fechar clicando fora
+      if (!isObrigatorio && !open) {
         onClose();
       }
     }}>
@@ -77,10 +78,13 @@ const ConfiguracaoPastaModal = ({ isOpen, onClose }: ConfiguracaoPastaModalProps
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <HardDrive className="h-5 w-5 text-primary" />
-            Configurar Pasta Local
+            {isObrigatorio ? 'Configuração Obrigatória' : 'Configurar Pasta Local'}
           </DialogTitle>
           <DialogDescription>
-            Configure uma pasta no seu computador para backup automático dos seus dados
+            {isObrigatorio 
+              ? 'Para backup automático dos seus dados, configure uma pasta local'
+              : 'Configure uma pasta no seu computador para backup automático dos seus dados'
+            }
           </DialogDescription>
         </DialogHeader>
 
@@ -116,14 +120,16 @@ const ConfiguracaoPastaModal = ({ isOpen, onClose }: ConfiguracaoPastaModalProps
               {isConfiguring ? 'Configurando...' : 'Escolher Pasta'}
             </Button>
             
-            <Button 
-              variant="outline" 
-              onClick={onClose}
-              disabled={isConfiguring}
-              className="w-full"
-            >
-              Fechar
-            </Button>
+            {!isObrigatorio && (
+              <Button 
+                variant="outline" 
+                onClick={onClose}
+                disabled={isConfiguring}
+                className="w-full"
+              >
+                Fechar
+              </Button>
+            )}
           </div>
 
           <div className="text-xs text-muted-foreground text-center">
