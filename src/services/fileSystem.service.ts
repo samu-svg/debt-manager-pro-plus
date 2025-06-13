@@ -79,23 +79,35 @@ export const recuperarHandlePasta = async (): Promise<FileSystemDirectoryHandle 
 // Configurar pasta local
 export const configurarPastaLocal = async (): Promise<FileSystemDirectoryHandle | null> => {
   if (!suportaFileSystemAPI()) {
-    throw new Error('File System Access API não suportada neste navegador');
+    throw new Error('Seu navegador não suporta a seleção de pastas. Tente usar Chrome, Edge ou Opera.');
   }
   
   try {
+    console.log('Solicitando seleção de pasta...');
+    
     const handle = await (window as any).showDirectoryPicker({
       mode: 'readwrite'
     });
     
+    console.log('Pasta selecionada:', handle);
+    
     await salvarHandlePasta(handle);
+    console.log('Handle da pasta salvo com sucesso');
+    
     return handle;
   } catch (error) {
+    console.error('Erro ao configurar pasta:', error);
+    
     if ((error as Error).name === 'AbortError') {
       console.log('Usuário cancelou a seleção da pasta');
-      return null;
+      throw new Error('Seleção de pasta cancelada pelo usuário');
     }
-    console.error('Erro ao configurar pasta:', error);
-    throw error;
+    
+    if ((error as Error).name === 'NotAllowedError') {
+      throw new Error('Permissão negada para acessar a pasta. Verifique as configurações do navegador.');
+    }
+    
+    throw new Error(`Erro ao selecionar pasta: ${(error as Error).message}`);
   }
 };
 

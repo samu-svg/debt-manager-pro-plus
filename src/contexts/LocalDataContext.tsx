@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { ClienteLocal, DividaLocal, PagamentoLocal, StatusSincronizacao } from '@/types/localStorage';
 import * as LocalStorage from '@/services/localStorage.service';
@@ -171,9 +170,14 @@ export const LocalDataProvider = ({ children }: { children: React.ReactNode }) =
     try {
       console.log('Configurando pasta local...');
       const handle = await FileSystem.configurarPastaLocal();
+      
       if (handle) {
+        console.log('Pasta configurada com sucesso, atualizando status...');
         await verificarStatus();
         await sincronizar();
+        console.log('Sincronização inicial concluída');
+      } else {
+        console.log('Nenhuma pasta foi selecionada');
       }
     } catch (error) {
       console.error('Erro ao configurar pasta:', error);

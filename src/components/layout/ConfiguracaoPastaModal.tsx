@@ -18,7 +18,10 @@ const ConfiguracaoPastaModal = () => {
     const primeiroAcesso = localStorage.getItem('devedores_primeiro_acesso');
     const suportaFileSystem = 'showDirectoryPicker' in window;
     
+    console.log('Verificando primeiro acesso:', { primeiroAcesso, suportaFileSystem });
+    
     if (!primeiroAcesso && suportaFileSystem && !statusSincronizacao.pastaConfigurada) {
+      console.log('Abrindo modal de configuração da pasta');
       setIsOpen(true);
     }
   }, [statusSincronizacao.pastaConfigurada]);
@@ -26,6 +29,8 @@ const ConfiguracaoPastaModal = () => {
   const handleConfigurarPasta = async () => {
     try {
       setIsConfiguring(true);
+      console.log('Iniciando configuração da pasta...');
+      
       await configurarPasta();
       
       // Marcar que já passou pelo primeiro acesso
@@ -39,11 +44,23 @@ const ConfiguracaoPastaModal = () => {
       setIsOpen(false);
     } catch (error) {
       console.error('Erro ao configurar pasta:', error);
-      toast({
-        title: 'Erro ao configurar pasta',
-        description: 'Tente novamente ou configure mais tarde.',
-        variant: 'destructive',
-      });
+      
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+      
+      // Se usuário cancelou, não mostrar como erro
+      if (errorMessage.includes('AbortError') || errorMessage.includes('cancelou')) {
+        console.log('Usuário cancelou a seleção da pasta');
+        toast({
+          title: 'Configuração cancelada',
+          description: 'Você pode configurar a pasta local a qualquer momento.',
+        });
+      } else {
+        toast({
+          title: 'Erro ao configurar pasta',
+          description: `${errorMessage}. Verifique se seu navegador suporta a seleção de pastas.`,
+          variant: 'destructive',
+        });
+      }
     } finally {
       setIsConfiguring(false);
     }
@@ -56,18 +73,23 @@ const ConfiguracaoPastaModal = () => {
     toast({
       title: 'Configuração adiada',
       description: 'Você pode configurar a pasta local a qualquer momento no cabeçalho.',
-      variant: 'destructive',
     });
   };
 
   // Não mostrar se o navegador não suporta File System API
   if (!('showDirectoryPicker' in window)) {
+    console.log('Navegador não suporta File System API');
     return null;
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={() => {}}>
-      <DialogContent className="sm:max-w-[500px]" onPointerDownOutside={(e) => e.preventDefault()}>
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      // Permitir fechar apenas se não estiver configurando
+      if (!isConfiguring) {
+        setIsOpen(open);
+      }
+    }}>
+      <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <HardDrive className="h-5 w-5 text-primary" />
