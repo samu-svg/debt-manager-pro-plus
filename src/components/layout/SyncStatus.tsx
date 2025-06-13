@@ -8,24 +8,34 @@ import {
   Folder, 
   Download, 
   RefreshCw,
-  AlertCircle 
+  AlertCircle,
+  HardDrive
 } from 'lucide-react';
 import { useLocalData } from '@/contexts/LocalDataContext';
 import { useToast } from '@/hooks/use-toast';
 import { formatarData } from '@/lib/utils';
 import ConfiguracaoPastaModal from './ConfiguracaoPastaModal';
+import * as FileSystem from '@/services/fileSystem.service';
 
 const SyncStatus = () => {
-  const { statusSincronizacao, configurarPasta, sincronizar, criarBackup } = useLocalData();
+  const { 
+    statusSincronizacao, 
+    configurarPasta, 
+    sincronizar, 
+    criarBackup,
+    mostrarConfiguracao,
+    setMostrarConfiguracao
+  } = useLocalData();
   const { toast } = useToast();
   const [showModal, setShowModal] = useState(false);
 
+  const funcionalidadeDisponivel = FileSystem.funcionalidadeDisponivel();
+
   const handleConfigurarPasta = async () => {
-    // Verificar se estamos em um ambiente que suporta a API
-    if (window.location.hostname.includes('lovable.app')) {
+    if (!funcionalidadeDisponivel) {
       toast({
-        title: 'Aviso',
-        description: 'A configuração de pasta funciona apenas quando o app é acessado diretamente, não no preview.',
+        title: 'Funcionalidade não disponível',
+        description: 'Use Chrome, Edge ou Opera e acesse o app diretamente (não no preview).',
         variant: 'destructive',
       });
       return;
@@ -67,6 +77,15 @@ const SyncStatus = () => {
   };
 
   const getStatusBadge = () => {
+    if (!funcionalidadeDisponivel) {
+      return (
+        <Badge variant="outline" className="flex items-center gap-1">
+          <CloudOff className="h-3 w-3" />
+          Navegador não suporta
+        </Badge>
+      );
+    }
+
     if (statusSincronizacao.erro) {
       return (
         <Badge variant="destructive" className="flex items-center gap-1">
@@ -80,7 +99,7 @@ const SyncStatus = () => {
       return (
         <Badge variant="default" className="flex items-center gap-1 bg-green-600">
           <Cloud className="h-3 w-3" />
-          Conectado
+          Pasta: Configurada ✓
         </Badge>
       );
     }
@@ -89,17 +108,29 @@ const SyncStatus = () => {
       return (
         <Badge variant="secondary" className="flex items-center gap-1">
           <CloudOff className="h-3 w-3" />
-          Offline
+          Reconectando...
         </Badge>
       );
     }
 
     return (
-      <Badge variant="outline" className="flex items-center gap-1">
-        <Folder className="h-3 w-3" />
-        Não configurado
+      <Badge variant="destructive" className="flex items-center gap-1">
+        <HardDrive className="h-3 w-3" />
+        Pasta: Não configurada
       </Badge>
     );
+  };
+
+  const getStatusText = () => {
+    if (!funcionalidadeDisponivel) {
+      return 'Use Chrome/Edge para backup local';
+    }
+    
+    if (statusSincronizacao.pastaConfigurada) {
+      return 'Backup automático ativo';
+    }
+    
+    return 'Configure pasta para backup';
   };
 
   return (
@@ -114,24 +145,24 @@ const SyncStatus = () => {
         )}
         
         <div className="flex items-center gap-1">
-          {!statusSincronizacao.pastaConfigurada ? (
+          {funcionalidadeDisponivel && !statusSincronizacao.pastaConfigurada ? (
             <Button
               variant="outline"
               size="sm"
               onClick={handleConfigurarPasta}
-              className="h-8"
+              className="h-8 bg-red-50 border-red-200 text-red-700 hover:bg-red-100"
             >
               <Folder className="h-4 w-4 mr-1" />
-              Configurar
+              Configurar Pasta
             </Button>
-          ) : (
+          ) : funcionalidadeDisponivel && statusSincronizacao.pastaConfigurada ? (
             <>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={handleSincronizar}
                 className="h-8 w-8 p-0"
-                title="Sincronizar"
+                title="Sincronizar agora"
               >
                 <RefreshCw className="h-4 w-4" />
               </Button>
@@ -141,7 +172,7 @@ const SyncStatus = () => {
                 size="sm"
                 onClick={handleCriarBackup}
                 className="h-8 w-8 p-0"
-                title="Criar backup"
+                title="Criar backup manual"
               >
                 <Download className="h-4 w-4" />
               </Button>
@@ -151,18 +182,28 @@ const SyncStatus = () => {
                 size="sm"
                 onClick={handleConfigurarPasta}
                 className="h-8"
+                title="Trocar pasta"
               >
                 <Folder className="h-4 w-4 mr-1" />
                 Trocar
               </Button>
             </>
-          )}
+          ) : null}
         </div>
       </div>
 
+      <div className="text-xs text-muted-foreground hidden md:block">
+        {getStatusText()}
+      </div>
+
+      {/* Modal de configuração obrigatório */}
       <ConfiguracaoPastaModal 
-        isOpen={showModal} 
-        onClose={() => setShowModal(false)} 
+        isOpen={mostrarConfiguracao || showModal} 
+        onClose={() => {
+          setMostrarConfiguracao(false);
+          setShowModal(false);
+        }}
+        isObrigatorio={mostrarConfiguracao}
       />
     </>
   );

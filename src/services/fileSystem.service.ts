@@ -2,7 +2,7 @@
 import { DadosLocais, StatusSincronizacao } from '@/types/localStorage';
 import { getDadosLocais, salvarDadosLocais } from './localStorage.service';
 
-// Chave para armazenar o handle da pasta no IndexedDB
+// Chaves para IndexedDB
 const DB_NAME = 'DevedoresDB';
 const DB_VERSION = 1;
 const STORE_NAME = 'handles';
@@ -15,16 +15,22 @@ export const suportaFileSystemAPI = (): boolean => {
 
 // Verificar se estamos em um ambiente seguro para usar a API
 export const ambienteSeguroParaAPI = (): boolean => {
-  // Não funciona em iframes ou subdomínios específicos
+  // Não funciona em iframes
   if (window.self !== window.top) {
-    return false; // está em iframe
+    return false;
   }
   
+  // Não funciona em ambientes de preview
   if (window.location.hostname.includes('lovable.app')) {
-    return false; // ambiente de preview
+    return false;
   }
   
   return true;
+};
+
+// Verificar se a funcionalidade está disponível
+export const funcionalidadeDisponivel = (): boolean => {
+  return suportaFileSystemAPI() && ambienteSeguroParaAPI();
 };
 
 // Abrir IndexedDB
@@ -58,13 +64,19 @@ const salvarHandlePasta = async (handle: FileSystemDirectoryHandle): Promise<voi
     });
     
     db.close();
+    console.log('Handle da pasta salvo no IndexedDB');
   } catch (error) {
     console.error('Erro ao salvar handle da pasta:', error);
+    throw error;
   }
 };
 
 // Recuperar handle da pasta do IndexedDB
 export const recuperarHandlePasta = async (): Promise<FileSystemDirectoryHandle | null> => {
+  if (!funcionalidadeDisponivel()) {
+    return null;
+  }
+
   try {
     const db = await abrirDB();
     const transaction = db.transaction([STORE_NAME], 'readonly');
@@ -79,7 +91,19 @@ export const recuperarHandlePasta = async (): Promise<FileSystemDirectoryHandle 
     db.close();
     
     if (handle) {
-      return handle;
+      // Verificar se ainda temos permissão
+      const permission = await handle.queryPermission({ mode: 'readwrite' });
+      if (permission === 'granted') {
+        console.log('Handle da pasta recuperado com permissão válida');
+        return handle;
+      } else if (permission === 'prompt') {
+        const requestPermission = await handle.requestPermission({ mode: 'readwrite' });
+        if (requestPermission === 'granted') {
+          console.log('Permissão da pasta renovada');
+          return handle;
+        }
+      }
+      console.log('Permissão da pasta negada ou expirada');
     }
     
     return null;
@@ -90,13 +114,13 @@ export const recuperarHandlePasta = async (): Promise<FileSystemDirectoryHandle 
 };
 
 // Configurar pasta local
-export const configurarPastaLocal = async (): Promise<FileSystemDirectoryHandle | null> => {
+export const configurarPastaLocal = async (): Promise<FileSystemDirectoryHandle> => {
   if (!suportaFileSystemAPI()) {
-    throw new Error('Seu navegador não suporta a seleção de pastas. Tente usar Chrome, Edge ou Opera.');
+    throw new Error('Seu navegador não suporta a seleção de pastas. Use Chrome, Edge ou Opera atualizado.');
   }
   
   if (!ambienteSeguroParaAPI()) {
-    throw new Error('A seleção de pasta não funciona no ambiente de preview. Acesse o app diretamente para usar esta funcionalidade.');
+    throw new Error('A seleção de pasta não funciona no ambiente de preview. Acesse o app diretamente.');
   }
   
   try {
@@ -106,30 +130,34 @@ export const configurarPastaLocal = async (): Promise<FileSystemDirectoryHandle 
       mode: 'readwrite'
     });
     
-    console.log('Pasta selecionada:', handle);
+    console.log('Pasta selecionada:', handle.name);
     
     await salvarHandlePasta(handle);
-    console.log('Handle da pasta salvo com sucesso');
     
     return handle;
   } catch (error) {
     console.error('Erro ao configurar pasta:', error);
     
     if ((error as Error).name === 'AbortError') {
-      console.log('Usuário cancelou a seleção da pasta');
-      throw new Error('Seleção de pasta cancelada pelo usuário');
+      throw new Error('Seleção de pasta cancelada');
     }
     
     if ((error as Error).name === 'NotAllowedError') {
-      throw new Error('Permissão negada para acessar a pasta. Verifique as configurações do navegador.');
+      throw new Error('Permissão negada para acessar a pasta');
     }
     
     if ((error as Error).name === 'SecurityError') {
-      throw new Error('A seleção de pasta não funciona no ambiente atual. Acesse o app diretamente.');
+      throw new Error('Funcionalidade não disponível no ambiente atual');
     }
     
     throw new Error(`Erro ao selecionar pasta: ${(error as Error).message}`);
   }
+};
+
+// Verificar se pasta está configurada
+export const verificarPastaConfigurada = async (): Promise<boolean> => {
+  const handle = await recuperarHandlePasta();
+  return !!handle;
 };
 
 // Ler arquivo JSON da pasta
@@ -143,11 +171,11 @@ const lerArquivo = async (handle: FileSystemDirectoryHandle, nomeArquivo: string
     if ((error as Error).name === 'NotFoundError') {
       return null; // Arquivo não existe
     }
-    console.error('Erro ao ler arquivo:', error);
     throw error;
   }
 };
 
+// Escrever arquivo JSON na pasta
 const escreverArquivo = async (handle: FileSystemDirectoryHandle, nomeArquivo: string, dados: DadosLocais): Promise<void> => {
   try {
     const fileHandle = await handle.getFileHandle(nomeArquivo, { create: true });
@@ -155,12 +183,15 @@ const escreverArquivo = async (handle: FileSystemDirectoryHandle, nomeArquivo: s
     
     await writable.write(JSON.stringify(dados, null, 2));
     await writable.close();
+    
+    console.log(`Arquivo ${nomeArquivo} salvo na pasta`);
   } catch (error) {
     console.error('Erro ao escrever arquivo:', error);
     throw error;
   }
 };
 
+// Sincronizar dados
 export const sincronizarDados = async (): Promise<StatusSincronizacao> => {
   const handle = await recuperarHandlePasta();
   
@@ -177,21 +208,23 @@ export const sincronizarDados = async (): Promise<StatusSincronizacao> => {
     const dadosArquivo = await lerArquivo(handle, 'devedores.json');
     
     if (!dadosArquivo) {
+      // Criar arquivo inicial
       await escreverArquivo(handle, 'devedores.json', dadosLocais);
-      return {
-        conectado: true,
-        pastaConfigurada: true,
-        ultimaSincronizacao: new Date().toISOString()
-      };
-    }
-    
-    const dataLocal = new Date(dadosLocais.configuracoes.ultimaAtualizacao);
-    const dataArquivo = new Date(dadosArquivo.configuracoes.ultimaAtualizacao);
-    
-    if (dataArquivo > dataLocal) {
-      salvarDadosLocais(dadosArquivo);
-    } else if (dataLocal > dataArquivo) {
-      await escreverArquivo(handle, 'devedores.json', dadosLocais);
+      console.log('Arquivo inicial criado na pasta');
+    } else {
+      // Sincronizar baseado na última atualização
+      const dataLocal = new Date(dadosLocais.configuracoes.ultimaAtualizacao);
+      const dataArquivo = new Date(dadosArquivo.configuracoes.ultimaAtualizacao);
+      
+      if (dataArquivo > dataLocal) {
+        // Arquivo mais recente, atualizar localStorage
+        salvarDadosLocais(dadosArquivo);
+        console.log('Dados atualizados do arquivo para localStorage');
+      } else if (dataLocal > dataArquivo) {
+        // localStorage mais recente, atualizar arquivo
+        await escreverArquivo(handle, 'devedores.json', dadosLocais);
+        console.log('Dados atualizados do localStorage para arquivo');
+      }
     }
     
     return {
@@ -209,6 +242,7 @@ export const sincronizarDados = async (): Promise<StatusSincronizacao> => {
   }
 };
 
+// Criar backup
 export const criarBackup = async (): Promise<void> => {
   const handle = await recuperarHandlePasta();
   
@@ -217,33 +251,41 @@ export const criarBackup = async (): Promise<void> => {
   }
   
   const dados = getDadosLocais();
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-  const nomeBackup = `backup_${timestamp}.json`;
+  const agora = new Date();
+  const timestamp = agora.toISOString().slice(0, 10).replace(/-/g, '');
+  const nomeBackup = `devedores_backup_${timestamp}.json`;
   
   await escreverArquivo(handle, nomeBackup, dados);
+  console.log(`Backup criado: ${nomeBackup}`);
 };
 
-export const inicializarSincronizacao = async (): Promise<void> => {
-  if (!suportaFileSystemAPI() || !ambienteSeguroParaAPI()) {
-    console.warn('File System Access API não disponível neste ambiente');
+// Auto-sincronização
+export const iniciarAutoSincronizacao = async (): Promise<void> => {
+  if (!funcionalidadeDisponivel()) {
     return;
   }
   
+  // Sincronização inicial
   try {
     await sincronizarDados();
-    
-    setInterval(async () => {
-      try {
-        await sincronizarDados();
-      } catch (error) {
-        console.error('Erro na sincronização automática:', error);
-      }
-    }, 30000);
-    
-    window.addEventListener('beforeunload', () => {
-      sincronizarDados();
-    });
   } catch (error) {
-    console.error('Erro ao inicializar sincronização:', error);
+    console.error('Erro na sincronização inicial:', error);
   }
+  
+  // Sincronização a cada 30 segundos
+  setInterval(async () => {
+    try {
+      const handle = await recuperarHandlePasta();
+      if (handle) {
+        await sincronizarDados();
+      }
+    } catch (error) {
+      console.error('Erro na sincronização automática:', error);
+    }
+  }, 30000);
+  
+  // Sincronizar ao fechar a página
+  window.addEventListener('beforeunload', () => {
+    sincronizarDados();
+  });
 };
