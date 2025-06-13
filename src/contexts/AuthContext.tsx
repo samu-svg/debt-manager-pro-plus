@@ -7,9 +7,9 @@ import { useToast } from '@/hooks/use-toast';
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string) => Promise<void>;
-  signOut: () => Promise<void>;
+  signIn: (email: string, password: string) => Promise<{ error?: any }>;
+  signUp: (email: string, password: string) => Promise<{ error?: any }>;
+  signOut: () => Promise<{ error?: any }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -59,15 +59,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           description: error.message,
           variant: 'destructive',
         });
-        throw error;
+        return { error };
       }
 
       toast({
         title: 'Login realizado',
         description: 'Você foi autenticado com sucesso!',
       });
+      
+      return {};
     } catch (error) {
       console.error('Erro no signIn:', error);
+      return { error };
     } finally {
       setLoading(false);
     }
@@ -87,15 +90,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           description: error.message,
           variant: 'destructive',
         });
-        throw error;
+        return { error };
       }
 
       toast({
         title: 'Cadastro realizado',
         description: 'Verifique seu email para confirmar a conta.',
       });
+      
+      return {};
     } catch (error) {
       console.error('Erro no signUp:', error);
+      return { error };
     } finally {
       setLoading(false);
     }
@@ -112,15 +118,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           description: error.message,
           variant: 'destructive',
         });
-        throw error;
+        return { error };
       }
 
       toast({
         title: 'Logout realizado',
         description: 'Você foi desconectado com sucesso!',
       });
+      
+      return {};
     } catch (error) {
       console.error('Erro no signOut:', error);
+      return { error };
     } finally {
       setLoading(false);
     }

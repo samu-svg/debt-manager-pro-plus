@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Cliente } from '@/types';
+import { ClienteLocal } from '@/types/localStorage';
 
 // Schema de validação para o formulário
 const clienteSchema = z.object({
@@ -18,12 +18,12 @@ const clienteSchema = z.object({
 type ClienteFormValues = z.infer<typeof clienteSchema>;
 
 interface ClienteFormProps {
-  cliente?: Cliente;
-  onSubmit: (data: ClienteFormValues) => void;
+  cliente?: ClienteLocal | null;
+  onSave: (data: Omit<ClienteLocal, 'id' | 'dividas' | 'pagamentos'>) => Promise<void>;
   onCancel: () => void;
 }
 
-const ClienteForm = ({ cliente, onSubmit, onCancel }: ClienteFormProps) => {
+const ClienteForm = ({ cliente, onSave, onCancel }: ClienteFormProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Formatar CPF ao digitar
@@ -68,11 +68,15 @@ const ClienteForm = ({ cliente, onSubmit, onCancel }: ClienteFormProps) => {
       const dadosFormatados = {
         ...data,
         cpf: cpfFormatado,
-        telefone: telefoneFormatado
+        telefone: telefoneFormatado,
+        email: cliente?.email || '',
+        endereco: cliente?.endereco || '',
+        createdAt: cliente?.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       };
       
       console.log("Dados formatados para envio:", dadosFormatados);
-      await onSubmit(dadosFormatados);
+      await onSave(dadosFormatados);
     } catch (error) {
       console.error("Erro ao enviar formulário:", error);
     } finally {

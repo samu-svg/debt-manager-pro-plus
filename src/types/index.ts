@@ -1,4 +1,3 @@
-
 // Tipos para o cliente
 export interface Cliente {
   id: string;
@@ -10,7 +9,7 @@ export interface Cliente {
 }
 
 // Tipos para dívidas
-export type StatusPagamento = 'pendente' | 'pago' | 'atrasado';
+export type StatusPagamento = 'pendente' | 'pago' | 'atrasado' | 'vencido';
 
 // Tipo para mês de início dos juros (carência)
 export type MesInicioJuros = '1º mês' | '2º mês' | '3º mês' | '4º mês' | '5º mês' | '6º mês';
@@ -114,7 +113,8 @@ export function mapDbDividaToDivida(dbDivida: DbDivida): Divida {
   const statusMap: Record<string, StatusPagamento> = {
     'Pendente': 'pendente',
     'Pago': 'pago',
-    'Atrasado': 'atrasado'
+    'Atrasado': 'atrasado',
+    'Vencido': 'vencido'
   };
   
   return {
