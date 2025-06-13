@@ -1,3 +1,4 @@
+
 // Remove the supabase import and update the file
 const WHATSAPP_API_URL = 'https://graph.facebook.com/v17.0';
 
@@ -45,4 +46,18 @@ const sendMessage = async (
   }
 };
 
+// Check if WhatsApp Business API is configured
+const isConfigured = (): boolean => {
+  const phoneNumberId = import.meta.env.VITE_WHATSAPP_PHONE_NUMBER_ID;
+  const accessToken = import.meta.env.VITE_WHATSAPP_ACCESS_TOKEN;
+  return !!(phoneNumberId && accessToken);
+};
+
+// Export the API object that StatusConexao expects
+export const whatsappBusinessApi = {
+  isConfigured,
+  sendMessage
+};
+
+// Also export individual functions for flexibility
 export { sendMessage };
